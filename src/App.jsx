@@ -23,8 +23,8 @@ function App() {
   const [intervalMinsInput, setIntervalMinsInput] = useState("7");
   const [intervalSecsInput, setIntervalSecsInput] = useState("30");
   const [intervalCountInput, setIntervalCountInput] = useState("2");
-  const [intervalSound, setIntervalSound] = useState('bowl');
-  const [intervalPitch, setIntervalPitch] = useState(0.8);
+  const [intervalSound, setIntervalSound] = useState('tingsha');
+  const [intervalPitch, setIntervalPitch] = useState(0.85);
 
   // Preparation Countdown States
   const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
