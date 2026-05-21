@@ -24,6 +24,7 @@ function App() {
   const [intervalSecsInput, setIntervalSecsInput] = useState("30");
   const [intervalCountInput, setIntervalCountInput] = useState("2");
   const [intervalSound, setIntervalSound] = useState('tingsha');
+  const [intervalInputMode, setIntervalInputMode] = useState('time'); // 'time' or 'count'
 
   // Preparation Countdown States
   const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
@@ -31,6 +32,7 @@ function App() {
   const [countdownActive, setCountdownActive] = useState(false);
   const [countdownTimeLeft, setCountdownTimeLeft] = useState(10);
   const [countdownDurationInput, setCountdownDurationInput] = useState("10");
+  const [focusedInput, setFocusedInput] = useState(null);
 
   // Format seconds to a readable "Xm Ys" or "Ys" format
   const formatMinutesAndSeconds = (totalSeconds) => {
@@ -60,8 +62,9 @@ function App() {
   }, [totalTime]);
 
   useEffect(() => {
-    const mins = Math.floor(intervalX / 60);
-    const secs = intervalX % 60;
+    const totalSecs = Math.round(intervalX);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
     
     if (parseInt(intervalMinsInput) !== mins) {
       setIntervalMinsInput(mins.toString());
@@ -153,16 +156,15 @@ function App() {
     }
   };
 
-  // Play the deep Tibetan bowl gong (rate 0.8, volume 1.4 for smooth, resonant volume)
+  // Play the deep Tibetan bowl gong (original natural pitch, volume 1.4 for smooth, resonant volume)
   const playGong = () => {
-    playBuffer(startBuffer, 0.8, 1.4, true);
+    playBuffer(startBuffer, 1.0, 1.4, true);
   };
 
-  // Play the calm, lower-pitched accent chime at interval marks (supports custom selections)
+  // Play the calm, natural accent chime at interval marks (supports custom selections)
   const playIntervalGong = (soundType = intervalSound) => {
     const buffer = soundType === 'bowl' ? startBuffer : tingshaBuffer;
-    const pitchRate = soundType === 'bowl' ? 0.8 : 0.85;
-    playBuffer(buffer, pitchRate, 1.4, soundType === 'bowl');
+    playBuffer(buffer, 1.0, 1.4, soundType === 'bowl');
   };
 
   const playEndGong = () => {
@@ -193,7 +195,23 @@ function App() {
             const elapsed = totalTime - nextTimeLeft;
             
             // Play high chime gong at interval
-            if (elapsed > 0 && nextTimeLeft > 0 && elapsed % intervalX === 0) {
+            let shouldPlay = false;
+            if (elapsed > 0 && nextTimeLeft > 0) {
+              if (intervalInputMode === 'time') {
+                shouldPlay = elapsed % Math.round(intervalX) === 0;
+              } else {
+                const count = intervalX > 0 ? Math.round(totalTime / intervalX) : 2;
+                if (count > 1) {
+                  const i = Math.round(elapsed * count / totalTime);
+                  if (i > 0 && i < count) {
+                    const expectedSecond = Math.round(i * totalTime / count);
+                    shouldPlay = elapsed === expectedSecond;
+                  }
+                }
+              }
+            }
+
+            if (shouldPlay) {
               playIntervalGong();
             }
             
@@ -209,7 +227,7 @@ function App() {
       }
     }
     return () => clearInterval(interval);
-  }, [isRunning, countdownActive, totalTime, intervalX]);
+  }, [isRunning, countdownActive, totalTime, intervalX, intervalInputMode]);
 
   const toggleTimer = () => {
     if (!isRunning) {
@@ -385,7 +403,7 @@ function App() {
       
       const count = valStr === "" ? 0 : parseInt(valStr);
       if (count >= 1) {
-        let calculated = Math.round(totalTime / count);
+        let calculated = totalTime / count;
         calculated = Math.max(5, Math.min(totalTime, calculated));
         
         setIntervalX(calculated);
@@ -402,7 +420,7 @@ function App() {
       const activeCount = intervalX > 0 ? Math.round(totalTime / intervalX) : 2;
       setIntervalCountInput(activeCount.toString());
     } else {
-      let calculated = Math.round(totalTime / count);
+      let calculated = totalTime / count;
       calculated = Math.max(5, Math.min(totalTime, calculated));
       setIntervalX(calculated);
       
@@ -433,6 +451,54 @@ function App() {
     } else {
       setCountdownDuration(parsed);
       setCountdownDurationInput(parsed.toString());
+    }
+  };
+
+  const incrementVal = (type) => {
+    if (type === 'totalMins') {
+      const current = parseInt(totalTimeMinsInput) || 0;
+      handleTotalMinsInputChange((current + 1).toString());
+    } else if (type === 'totalSecs') {
+      const current = parseInt(totalTimeSecsInput) || 0;
+      const next = (current + 1) % 60;
+      handleTotalSecsInputChange(next.toString().padStart(2, '0'));
+    } else if (type === 'intervalMins') {
+      const current = parseInt(intervalMinsInput) || 0;
+      handleIntervalMinsInputChange((current + 1).toString());
+    } else if (type === 'intervalSecs') {
+      const current = parseInt(intervalSecsInput) || 0;
+      const next = (current + 1) % 60;
+      handleIntervalSecsInputChange(next.toString().padStart(2, '0'));
+    } else if (type === 'intervalCount') {
+      const current = parseInt(intervalCountInput) || 1;
+      handleIntervalCountInputChange((current + 1).toString());
+    } else if (type === 'countdown') {
+      const current = parseInt(countdownDurationInput) || 10;
+      handleCountdownDurationInputChange((current + 1).toString());
+    }
+  };
+
+  const decrementVal = (type) => {
+    if (type === 'totalMins') {
+      const current = parseInt(totalTimeMinsInput) || 0;
+      handleTotalMinsInputChange(Math.max(0, current - 1).toString());
+    } else if (type === 'totalSecs') {
+      const current = parseInt(totalTimeSecsInput) || 0;
+      const next = (current - 1 + 60) % 60;
+      handleTotalSecsInputChange(next.toString().padStart(2, '0'));
+    } else if (type === 'intervalMins') {
+      const current = parseInt(intervalMinsInput) || 0;
+      handleIntervalMinsInputChange(Math.max(0, current - 1).toString());
+    } else if (type === 'intervalSecs') {
+      const current = parseInt(intervalSecsInput) || 0;
+      const next = (current - 1 + 60) % 60;
+      handleIntervalSecsInputChange(next.toString().padStart(2, '0'));
+    } else if (type === 'intervalCount') {
+      const current = parseInt(intervalCountInput) || 1;
+      handleIntervalCountInputChange(Math.max(1, current - 1).toString());
+    } else if (type === 'countdown') {
+      const current = parseInt(countdownDurationInput) || 10;
+      handleCountdownDurationInputChange(Math.max(3, current - 1).toString());
     }
   };
 
@@ -468,13 +534,13 @@ function App() {
             className={`btn settings-toggle-btn ${showSettings ? 'active' : ''}`} 
             onClick={() => setShowSettings(!showSettings)}
           >
-            Settings
+            Options
           </button>
         </div>
 
         {showSettings && (
           <div className="settings-panel">
-            <h3 className="settings-title">Session Settings</h3>
+            <h3 className="settings-title">Session Options</h3>
             
             {/* Total Duration Slider & Direct Input Option */}
             <div className="setting-row">
@@ -482,26 +548,64 @@ function App() {
                 <span>Meditation Time:</span>
                 <div className="input-group">
                   <div className="input-container">
+                    {focusedInput === 'totalMins' && (
+                      <button 
+                        type="button" 
+                        className="stepper-btn"
+                        onMouseDown={(e) => { e.preventDefault(); decrementVal('totalMins'); }}
+                      >
+                        −
+                      </button>
+                    )}
                     <input 
                       type="text" 
                       pattern="[0-9]*"
                       value={totalTimeMinsInput} 
                       onChange={(e) => handleTotalMinsInputChange(e.target.value)}
-                      onBlur={handleTotalTimeInputBlur}
+                      onFocus={() => setFocusedInput('totalMins')}
+                      onBlur={() => setFocusedInput(null)}
                       className="time-number-input"
                     />
                     <span className="input-suffix">m</span>
+                    {focusedInput === 'totalMins' && (
+                      <button 
+                        type="button" 
+                        className="stepper-btn"
+                        onMouseDown={(e) => { e.preventDefault(); incrementVal('totalMins'); }}
+                      >
+                        +
+                      </button>
+                    )}
                   </div>
                   <div className="input-container">
+                    {focusedInput === 'totalSecs' && (
+                      <button 
+                        type="button" 
+                        className="stepper-btn"
+                        onMouseDown={(e) => { e.preventDefault(); decrementVal('totalSecs'); }}
+                      >
+                        −
+                      </button>
+                    )}
                     <input 
                       type="text" 
                       pattern="[0-9]*"
                       value={totalTimeSecsInput} 
                       onChange={(e) => handleTotalSecsInputChange(e.target.value)}
-                      onBlur={handleTotalTimeInputBlur}
+                      onFocus={() => setFocusedInput('totalSecs')}
+                      onBlur={() => setFocusedInput(null)}
                       className="time-number-input"
                     />
                     <span className="input-suffix">s</span>
+                    {focusedInput === 'totalSecs' && (
+                      <button 
+                        type="button" 
+                        className="stepper-btn"
+                        onMouseDown={(e) => { e.preventDefault(); incrementVal('totalSecs'); }}
+                      >
+                        +
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
@@ -526,63 +630,168 @@ function App() {
               />
             </div>
 
-            {/* Interval Gong Slider & Direct Input Option */}
+            {/* Interval Gong Input Mode Selector & Slider */}
             <div className="setting-row">
-              <div className="setting-label">
+              <div className="setting-label" style={{ marginBottom: '8px' }}>
                 <span>Gong Interval:</span>
-                <div className="input-group">
-                  <div className="input-container">
-                    <input 
-                      type="text" 
-                      pattern="[0-9]*"
-                      value={intervalMinsInput} 
-                      onChange={(e) => handleIntervalMinsInputChange(e.target.value)}
-                      onBlur={handleIntervalInputBlur}
-                      className="time-number-input"
-                    />
-                    <span className="input-suffix">m</span>
-                  </div>
-                  <div className="input-container">
-                    <input 
-                      type="text" 
-                      pattern="[0-9]*"
-                      value={intervalSecsInput} 
-                      onChange={(e) => handleIntervalSecsInputChange(e.target.value)}
-                      onBlur={handleIntervalInputBlur}
-                      className="time-number-input"
-                    />
-                    <span className="input-suffix">s</span>
-                  </div>
-                  <span style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 2px' }}>or</span>
-                  <div className="input-container">
-                    <input 
-                      type="text" 
-                      pattern="[0-9]*"
-                      value={intervalCountInput} 
-                      onChange={(e) => handleIntervalCountInputChange(e.target.value)}
-                      onBlur={handleIntervalCountInputBlur}
-                      className="time-number-input"
-                      style={{ width: '28px', textAlign: 'center' }}
-                    />
-                    <span className="input-suffix">gongs</span>
-                  </div>
+                <div className="segmented-control">
+                  <button 
+                    type="button"
+                    className={`segmented-btn ${intervalInputMode === 'time' ? 'active' : ''}`}
+                    onClick={() => setIntervalInputMode('time')}
+                  >
+                    By Time
+                  </button>
+                  <button 
+                    type="button"
+                    className={`segmented-btn ${intervalInputMode === 'count' ? 'active' : ''}`}
+                    onClick={() => setIntervalInputMode('count')}
+                  >
+                    By Count
+                  </button>
                 </div>
               </div>
-              <input 
-                type="range" 
-                min="5" 
-                max={totalTime} 
-                step="5"
-                value={intervalX} 
-                onChange={(e) => {
-                  const val = parseInt(e.target.value) || 5;
-                  setIntervalX(val);
-                  setIsCustomInterval(true);
-                  setIsRunning(false);
-                  setTimeLeft(totalTime);
-                }}
-                className="setting-slider"
-              />
+
+              {intervalInputMode === 'time' ? (
+                <>
+                  <div className="setting-label-row">
+                    <span className="setting-sub-label">Interval Duration:</span>
+                    <div className="input-group">
+                      <div className="input-container">
+                        {focusedInput === 'intervalMins' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); decrementVal('intervalMins'); }}
+                          >
+                            −
+                          </button>
+                        )}
+                        <input 
+                          type="text" 
+                          pattern="[0-9]*"
+                          value={intervalMinsInput} 
+                          onChange={(e) => handleIntervalMinsInputChange(e.target.value)}
+                          onFocus={() => setFocusedInput('intervalMins')}
+                          onBlur={() => setFocusedInput(null)}
+                          className="time-number-input"
+                        />
+                        <span className="input-suffix">m</span>
+                        {focusedInput === 'intervalMins' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); incrementVal('intervalMins'); }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                      <div className="input-container">
+                        {focusedInput === 'intervalSecs' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); decrementVal('intervalSecs'); }}
+                          >
+                            −
+                          </button>
+                        )}
+                        <input 
+                          type="text" 
+                          pattern="[0-9]*"
+                          value={intervalSecsInput} 
+                          onChange={(e) => handleIntervalSecsInputChange(e.target.value)}
+                          onFocus={() => setFocusedInput('intervalSecs')}
+                          onBlur={() => setFocusedInput(null)}
+                          className="time-number-input"
+                        />
+                        <span className="input-suffix">s</span>
+                        {focusedInput === 'intervalSecs' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); incrementVal('intervalSecs'); }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="5" 
+                    max={totalTime} 
+                    step="5"
+                    value={Math.round(intervalX)} 
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 5;
+                      setIntervalX(val);
+                      setIsCustomInterval(true);
+                      setIsRunning(false);
+                      setTimeLeft(totalTime);
+                    }}
+                    className="setting-slider"
+                  />
+                </>
+              ) : (
+                <>
+                  <div className="setting-label-row">
+                    <span className="setting-sub-label">Divide session into:</span>
+                    <div className="input-group">
+                      <div className="input-container">
+                        {focusedInput === 'intervalCount' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); decrementVal('intervalCount'); }}
+                          >
+                            −
+                          </button>
+                        )}
+                        <input 
+                           type="text" 
+                           pattern="[0-9]*"
+                           value={intervalCountInput} 
+                           onChange={(e) => handleIntervalCountInputChange(e.target.value)}
+                           onFocus={() => setFocusedInput('intervalCount')}
+                           onBlur={() => setFocusedInput(null)}
+                           className="time-number-input"
+                           style={{ width: '30px', textAlign: 'center' }}
+                        />
+                        <span className="input-suffix">intervals (gongs)</span>
+                        {focusedInput === 'intervalCount' && (
+                          <button 
+                            type="button" 
+                            className="stepper-btn"
+                            onMouseDown={(e) => { e.preventDefault(); incrementVal('intervalCount'); }}
+                          >
+                            +
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <input 
+                    type="range" 
+                    min="1" 
+                    max={Math.max(1, Math.min(100, Math.floor(totalTime / 5)))} 
+                    step="1"
+                    value={intervalX > 0 ? Math.round(totalTime / intervalX) : 2} 
+                    onChange={(e) => {
+                      const count = parseInt(e.target.value) || 1;
+                      let calculated = totalTime / count;
+                      calculated = Math.max(5, Math.min(totalTime, calculated));
+                      setIntervalX(calculated);
+                      setIsCustomInterval(true);
+                      setIsRunning(false);
+                      setTimeLeft(totalTime);
+                    }}
+                    className="setting-slider"
+                  />
+                </>
+              )}
             </div>
 
             {/* Reset to Half-Time auto helper */}
@@ -628,15 +837,34 @@ function App() {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   {isCountdownEnabled && (
                     <div className="input-container">
+                      {focusedInput === 'countdown' && (
+                        <button 
+                          type="button" 
+                          className="stepper-btn"
+                          onMouseDown={(e) => { e.preventDefault(); decrementVal('countdown'); }}
+                        >
+                          −
+                        </button>
+                      )}
                       <input 
                         type="text" 
                         pattern="[0-9]*"
                         value={countdownDurationInput} 
                         onChange={(e) => handleCountdownDurationInputChange(e.target.value)}
-                        onBlur={handleCountdownDurationInputBlur}
+                        onFocus={() => setFocusedInput('countdown')}
+                        onBlur={() => setFocusedInput(null)}
                         className="time-number-input"
                       />
                       <span className="input-suffix">s</span>
+                      {focusedInput === 'countdown' && (
+                        <button 
+                          type="button" 
+                          className="stepper-btn"
+                          onMouseDown={(e) => { e.preventDefault(); incrementVal('countdown'); }}
+                        >
+                          +
+                        </button>
+                      )}
                     </div>
                   )}
                   <label className="switch-container">
