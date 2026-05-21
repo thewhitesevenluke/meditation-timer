@@ -1,0 +1,66 @@
+<svg viewBox="0 0 1000 1000" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Soft spring sky gradient -->
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFF0F5" /> <!-- LavenderBlush -->
+      <stop offset="40%" stop-color="#FFE4E1" /> <!-- MistyRose -->
+      <stop offset="100%" stop-color="#E8F5E9" /> <!-- Soft spring green -->
+    </linearGradient>
+    
+    <!-- Sun glow -->
+    <radialGradient id="sun" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFF" stop-opacity="0.6" />
+      <stop offset="100%" stop-color="#FFF" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="1000" fill="url(#sky)" />
+  
+  <!-- Sun Glow in center-top -->
+  <circle cx="500" cy="400" r="300" fill="url(#sun)" />
+
+  <!-- Calming hills / ground -->
+  <path d="M-100 1000 C 200 950, 400 980, 600 950 C 800 920, 900 970, 1100 1000 Z" fill="#C8E6C9" opacity="0.7" />
+  <path d="M-100 1000 C 150 970, 350 940, 550 960 C 750 980, 950 950, 1100 1000 Z" fill="#A5D6A7" opacity="0.5" />
+
+  <!-- The Tree (stylized cherry blossom) on the right side curving over the center -->
+  <!-- Trunk -->
+  <path d="M750 960 C 720 800, 800 700, 750 550 C 730 480, 650 450, 580 470 C 530 480, 480 520, 450 500 C 420 480, 420 430, 400 400" fill="none" stroke="#5D4037" stroke-width="24" stroke-linecap="round" />
+  <path d="M750 750 C 650 680, 600 620, 520 630" fill="none" stroke="#5D4037" stroke-width="14" stroke-linecap="round" />
+  <path d="M680 500 C 660 400, 600 350, 500 350" fill="none" stroke="#5D4037" stroke-width="12" stroke-linecap="round" />
+
+  <!-- Blossom groups (Pastel Pinks and Soft Coral) -->
+  <circle cx="400" cy="380" r="70" fill="#FFB7C5" opacity="0.85" />
+  <circle cx="480" cy="340" r="90" fill="#FFC0CB" opacity="0.9" />
+  <circle cx="580" cy="360" r="100" fill="#FFB7C5" opacity="0.8" />
+  <circle cx="650" cy="420" r="85" fill="#FFC0CB" opacity="0.85" />
+  
+  <circle cx="440" cy="350" r="60" fill="#FFD1DC" opacity="0.95" />
+  <circle cx="530" cy="320" r="75" fill="#FFE4E1" opacity="0.95" />
+  <circle cx="610" cy="380" r="70" fill="#FFD1DC" opacity="0.9" />
+
+  <!-- Floating petals -->
+  <ellipse cx="320" cy="450" rx="12" ry="6" transform="rotate(-15 320 450)" fill="#FFB7C5" opacity="0.8" />
+  <ellipse cx="280" cy="520" rx="10" ry="5" transform="rotate(10 280 520)" fill="#FFC0CB" opacity="0.7" />
+  <ellipse cx="360" cy="580" rx="14" ry="7" transform="rotate(-30 360 580)" fill="#FFB7C5" opacity="0.8" />
+  <ellipse cx="420" cy="650" rx="9" ry="4" transform="rotate(25 420 650)" fill="#FFE4E1" opacity="0.9" />
+
+  <!-- Minimalist Buddha silhouette in lotus pose under the tree (positioned to the left of the trunk, sitting peacefully in the center-left) -->
+  <g transform="translate(380, 680) scale(1.1)" fill="#4E342E" opacity="0.75">
+    <!-- Ushnisha (topknot) -->
+    <circle cx="50" cy="12" r="7" />
+    <!-- Head -->
+    <circle cx="50" cy="27" r="13" />
+    <!-- Neck -->
+    <path d="M46 38 L54 38 L53 45 L47 45 Z" />
+    <!-- Torso / Shoulders -->
+    <path d="M25 55 C 25 48, 35 45, 50 45 C 65 45, 75 48, 75 55 L 70 95 C 68 100, 32 100, 30 95 Z" />
+    <!-- Hands in Mudra (center lap) -->
+    <ellipse cx="50" cy="98" rx="12" ry="6" fill="#5D4037" />
+    <!-- Folded Lotus Legs -->
+    <path d="M12 95 C 10 102, 20 115, 50 115 C 80 115, 90 102, 88 95 C 80 92, 70 102, 50 102 C 30 102, 20 92, 12 95 Z" />
+    <!-- Subtle aura glow behind head -->
+    <circle cx="50" cy="27" r="45" fill="none" stroke="#FFF" stroke-width="2" opacity="0.4" stroke-dasharray="4 4" />
+  </g>
+</svg>

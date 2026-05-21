@@ -1,0 +1,6 @@
+{
+  "appId": "com.lukex.springmeditation",
+  "appName": "Spring Meditation",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
