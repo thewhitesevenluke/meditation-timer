@@ -388,3 +388,36 @@
   margin-top: 0.5rem;
   padding: 0.2rem 0;
 }
+
+.sound-toggle-group {
+  display: flex;
+  background: rgba(212, 175, 55, 0.1);
+  border-radius: 20px;
+  padding: 2px;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+}
+
+.sound-toggle-btn {
+  background: none;
+  border: none;
+  border-radius: 18px;
+  padding: 4px 14px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #8B7355;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.sound-toggle-btn.active {
+  background: linear-gradient(135deg, #FFD700 0%, #D4AF37 100%);
+  color: #3E2723;
+  box-shadow: 0 2px 6px rgba(212, 175, 55, 0.2);
+}
+
+.pitch-label {
+  font-size: 0.78rem;
+  color: #B8860B;
+  font-weight: 700;
+}

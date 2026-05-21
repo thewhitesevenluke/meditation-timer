@@ -23,6 +23,8 @@ function App() {
   const [intervalMinsInput, setIntervalMinsInput] = useState("7");
   const [intervalSecsInput, setIntervalSecsInput] = useState("30");
   const [intervalCountInput, setIntervalCountInput] = useState("2");
+  const [intervalSound, setIntervalSound] = useState('bowl');
+  const [intervalPitch, setIntervalPitch] = useState(0.8);
 
   // Preparation Countdown States
   const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
@@ -117,7 +119,7 @@ function App() {
     initAudioEngine();
   }, []);
 
-  const playBuffer = (buffer, rate = 1.0, volumeMultiplier = 1.8) => {
+  const playBuffer = (buffer, rate = 1.0, volumeMultiplier = 1.8, isBowl = true) => {
     try {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -129,7 +131,7 @@ function App() {
 
       if (!buffer) {
         console.warn("Audio buffer not loaded yet. Falling back to HTML5 Audio.");
-        const audioPath = buffer === startBuffer ? '/start.mp3' : '/tingsha3.mp3';
+        const audioPath = isBowl ? '/start.mp3' : '/tingsha3.mp3';
         const fallbackAudio = new Audio(audioPath);
         fallbackAudio.playbackRate = rate;
         fallbackAudio.volume = Math.min(1.0, volumeMultiplier * 0.5);
@@ -154,12 +156,13 @@ function App() {
 
   // Play the deep Tibetan bowl gong (rate 0.8, volume 1.4 for smooth, resonant volume)
   const playGong = () => {
-    playBuffer(startBuffer, 0.8, 1.4);
+    playBuffer(startBuffer, 0.8, 1.4, true);
   };
 
-  // Play the calm, lower-pitched accent chime at interval marks (rate 0.85, volume 1.5)
-  const playIntervalGong = () => {
-    playBuffer(tingshaBuffer, 0.85, 1.5);
+  // Play the calm, lower-pitched accent chime at interval marks (supports custom selections)
+  const playIntervalGong = (soundType = intervalSound, pitchRate = intervalPitch) => {
+    const buffer = soundType === 'bowl' ? startBuffer : tingshaBuffer;
+    playBuffer(buffer, pitchRate, 1.4, soundType === 'bowl');
   };
 
   const playEndGong = () => {
@@ -593,6 +596,57 @@ function App() {
                 Reset Gong to Half-Time ({formatMinutesAndSeconds(totalTime / 2)})
               </button>
             )}
+
+            {/* Interval Sound Choice */}
+            <div className="setting-row">
+              <div className="setting-label">
+                <span>Interval Bell Sound:</span>
+                <div className="sound-toggle-group">
+                  <button 
+                    type="button"
+                    className={`sound-toggle-btn ${intervalSound === 'bowl' ? 'active' : ''}`}
+                    onClick={() => {
+                      setIntervalSound('bowl');
+                      playIntervalGong('bowl', intervalPitch);
+                    }}
+                  >
+                    Bowl
+                  </button>
+                  <button 
+                    type="button"
+                    className={`sound-toggle-btn ${intervalSound === 'tingsha' ? 'active' : ''}`}
+                    onClick={() => {
+                      setIntervalSound('tingsha');
+                      playIntervalGong('tingsha', intervalPitch);
+                    }}
+                  >
+                    Tingsha
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Bell Tone (Pitch) Slider */}
+            <div className="setting-row">
+              <div className="setting-label">
+                <span>Interval Bell Pitch:</span>
+                <span className="pitch-label">{intervalPitch < 0.75 ? 'Deep' : intervalPitch > 1.05 ? 'High' : 'Warm'} ({intervalPitch.toFixed(2)}x)</span>
+              </div>
+              <input 
+                type="range" 
+                min="0.5" 
+                max="1.5" 
+                step="0.05"
+                value={intervalPitch} 
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setIntervalPitch(val);
+                }}
+                onMouseUp={() => playIntervalGong(intervalSound, intervalPitch)}
+                onTouchEnd={() => playIntervalGong(intervalSound, intervalPitch)}
+                className="setting-slider"
+              />
+            </div>
 
             {/* Preparation Countdown Switch & Slider */}
             <div className="setting-row">
