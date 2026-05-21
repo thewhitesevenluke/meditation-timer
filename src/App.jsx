@@ -22,6 +22,7 @@ function App() {
   const [totalTimeSecsInput, setTotalTimeSecsInput] = useState("00");
   const [intervalMinsInput, setIntervalMinsInput] = useState("7");
   const [intervalSecsInput, setIntervalSecsInput] = useState("30");
+  const [intervalCountInput, setIntervalCountInput] = useState("2");
 
   // Preparation Countdown States
   const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
@@ -68,6 +69,13 @@ function App() {
       setIntervalSecsInput(secs.toString().padStart(2, '0'));
     }
   }, [intervalX]);
+
+  useEffect(() => {
+    const count = intervalX > 0 ? Math.round(totalTime / intervalX) : 1;
+    if (parseInt(intervalCountInput) !== count) {
+      setIntervalCountInput(count.toString());
+    }
+  }, [intervalX, totalTime]);
 
   useEffect(() => {
     if (parseInt(countdownDurationInput) !== countdownDuration) {
@@ -149,9 +157,9 @@ function App() {
     playBuffer(startBuffer, 0.8, 1.4);
   };
 
-  // Play the high accent chime at interval marks (rate 1.2, volume 1.5)
+  // Play the calm, lower-pitched accent chime at interval marks (rate 0.85, volume 1.5)
   const playIntervalGong = () => {
-    playBuffer(tingshaBuffer, 1.2, 1.5);
+    playBuffer(tingshaBuffer, 0.85, 1.5);
   };
 
   const playEndGong = () => {
@@ -368,6 +376,38 @@ function App() {
     }
   };
 
+  const handleIntervalCountInputChange = (valStr) => {
+    if (/^\d*$/.test(valStr)) {
+      setIntervalCountInput(valStr);
+      
+      const count = valStr === "" ? 0 : parseInt(valStr);
+      if (count >= 1) {
+        let calculated = Math.round(totalTime / count);
+        calculated = Math.max(5, Math.min(totalTime, calculated));
+        
+        setIntervalX(calculated);
+        setIsCustomInterval(true);
+        setIsRunning(false);
+        setTimeLeft(totalTime);
+      }
+    }
+  };
+
+  const handleIntervalCountInputBlur = () => {
+    const count = intervalCountInput === "" ? 0 : parseInt(intervalCountInput);
+    if (count < 1) {
+      const activeCount = intervalX > 0 ? Math.round(totalTime / intervalX) : 2;
+      setIntervalCountInput(activeCount.toString());
+    } else {
+      let calculated = Math.round(totalTime / count);
+      calculated = Math.max(5, Math.min(totalTime, calculated));
+      setIntervalX(calculated);
+      
+      const finalCount = Math.round(totalTime / calculated);
+      setIntervalCountInput(finalCount.toString());
+    }
+  };
+
   const handleCountdownDurationInputChange = (valStr) => {
     if (/^\d*$/.test(valStr)) {
       setCountdownDurationInput(valStr);
@@ -527,6 +567,24 @@ function App() {
                 }}
                 className="setting-slider"
               />
+              
+              <div className="interval-calc-row">
+                <span>Or divide session into:</span>
+                <div className="input-group">
+                  <div className="input-container">
+                    <input 
+                      type="text" 
+                      pattern="[0-9]*"
+                      value={intervalCountInput} 
+                      onChange={(e) => handleIntervalCountInputChange(e.target.value)}
+                      onBlur={handleIntervalCountInputBlur}
+                      className="time-number-input"
+                      style={{ width: '32px', textAlign: 'center' }}
+                    />
+                    <span className="input-suffix">gongs</span>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Reset to Half-Time auto helper */}
