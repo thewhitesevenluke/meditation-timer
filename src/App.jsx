@@ -24,7 +24,6 @@ function App() {
   const [intervalSecsInput, setIntervalSecsInput] = useState("30");
   const [intervalCountInput, setIntervalCountInput] = useState("2");
   const [intervalSound, setIntervalSound] = useState('tingsha');
-  const [intervalPitch, setIntervalPitch] = useState(0.85);
 
   // Preparation Countdown States
   const [isCountdownEnabled, setIsCountdownEnabled] = useState(false);
@@ -160,8 +159,9 @@ function App() {
   };
 
   // Play the calm, lower-pitched accent chime at interval marks (supports custom selections)
-  const playIntervalGong = (soundType = intervalSound, pitchRate = intervalPitch) => {
+  const playIntervalGong = (soundType = intervalSound) => {
     const buffer = soundType === 'bowl' ? startBuffer : tingshaBuffer;
+    const pitchRate = soundType === 'bowl' ? 0.8 : 0.85;
     playBuffer(buffer, pitchRate, 1.4, soundType === 'bowl');
   };
 
@@ -602,7 +602,7 @@ function App() {
                     className={`sound-toggle-btn ${intervalSound === 'bowl' ? 'active' : ''}`}
                     onClick={() => {
                       setIntervalSound('bowl');
-                      playIntervalGong('bowl', intervalPitch);
+                      playIntervalGong('bowl');
                     }}
                   >
                     Bowl
@@ -612,32 +612,13 @@ function App() {
                     className={`sound-toggle-btn ${intervalSound === 'tingsha' ? 'active' : ''}`}
                     onClick={() => {
                       setIntervalSound('tingsha');
-                      playIntervalGong('tingsha', intervalPitch);
+                      playIntervalGong('tingsha');
                     }}
                   >
                     Tingsha
                   </button>
                 </div>
               </div>
-            </div>
-
-            {/* Bell Tone (Pitch) Slider */}
-            <div className="setting-row-horizontal">
-              <span className="setting-label-compact">Pitch:</span>
-              <input 
-                type="range" 
-                min="0.5" 
-                max="1.5" 
-                step="0.05"
-                value={intervalPitch} 
-                onChange={(e) => {
-                  const val = parseFloat(e.target.value);
-                  setIntervalPitch(val);
-                }}
-                onMouseUp={() => playIntervalGong(intervalSound, intervalPitch)}
-                onTouchEnd={() => playIntervalGong(intervalSound, intervalPitch)}
-                className="setting-slider-compact"
-              />
             </div>
 
             {/* Preparation Countdown Switch & Slider */}
