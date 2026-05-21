@@ -553,6 +553,19 @@ function App() {
                     />
                     <span className="input-suffix">s</span>
                   </div>
+                  <span style={{ fontSize: '0.8rem', opacity: 0.6, margin: '0 2px' }}>or</span>
+                  <div className="input-container">
+                    <input 
+                      type="text" 
+                      pattern="[0-9]*"
+                      value={intervalCountInput} 
+                      onChange={(e) => handleIntervalCountInputChange(e.target.value)}
+                      onBlur={handleIntervalCountInputBlur}
+                      className="time-number-input"
+                      style={{ width: '28px', textAlign: 'center' }}
+                    />
+                    <span className="input-suffix">gongs</span>
+                  </div>
                 </div>
               </div>
               <input 
@@ -570,24 +583,6 @@ function App() {
                 }}
                 className="setting-slider"
               />
-              
-              <div className="interval-calc-row">
-                <span>Or divide session into:</span>
-                <div className="input-group">
-                  <div className="input-container">
-                    <input 
-                      type="text" 
-                      pattern="[0-9]*"
-                      value={intervalCountInput} 
-                      onChange={(e) => handleIntervalCountInputChange(e.target.value)}
-                      onBlur={handleIntervalCountInputBlur}
-                      className="time-number-input"
-                      style={{ width: '32px', textAlign: 'center' }}
-                    />
-                    <span className="input-suffix">gongs</span>
-                  </div>
-                </div>
-              </div>
             </div>
 
             {/* Reset to Half-Time auto helper */}
@@ -627,11 +622,8 @@ function App() {
             </div>
 
             {/* Bell Tone (Pitch) Slider */}
-            <div className="setting-row">
-              <div className="setting-label">
-                <span>Interval Bell Pitch:</span>
-                <span className="pitch-label">{intervalPitch < 0.75 ? 'Deep' : intervalPitch > 1.05 ? 'High' : 'Warm'} ({intervalPitch.toFixed(2)}x)</span>
-              </div>
+            <div className="setting-row-horizontal">
+              <span className="setting-label-compact">Pitch:</span>
               <input 
                 type="range" 
                 min="0.5" 
@@ -644,7 +636,7 @@ function App() {
                 }}
                 onMouseUp={() => playIntervalGong(intervalSound, intervalPitch)}
                 onTouchEnd={() => playIntervalGong(intervalSound, intervalPitch)}
-                className="setting-slider"
+                className="setting-slider-compact"
               />
             </div>
 
