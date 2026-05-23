@@ -795,7 +795,7 @@ function App() {
             </div>
 
             {/* Reset to Half-Time auto helper */}
-            {isCustomInterval && (
+            {isCustomInterval && Math.round(intervalX) !== Math.round(totalTime / 2) && (
               <button className="reset-auto-btn" onClick={resetToAutoInterval}>
                 Reset Gong to Half-Time ({formatMinutesAndSeconds(totalTime / 2)})
               </button>
