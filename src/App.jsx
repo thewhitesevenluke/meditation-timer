@@ -460,14 +460,14 @@ function App() {
       handleTotalMinsInputChange((current + 1).toString());
     } else if (type === 'totalSecs') {
       const current = parseInt(totalTimeSecsInput) || 0;
-      const next = (current + 1) % 60;
+      const next = (current + 5) % 60;
       handleTotalSecsInputChange(next.toString().padStart(2, '0'));
     } else if (type === 'intervalMins') {
       const current = parseInt(intervalMinsInput) || 0;
       handleIntervalMinsInputChange((current + 1).toString());
     } else if (type === 'intervalSecs') {
       const current = parseInt(intervalSecsInput) || 0;
-      const next = (current + 1) % 60;
+      const next = (current + 5) % 60;
       handleIntervalSecsInputChange(next.toString().padStart(2, '0'));
     } else if (type === 'intervalCount') {
       const current = parseInt(intervalCountInput) || 1;
@@ -484,14 +484,14 @@ function App() {
       handleTotalMinsInputChange(Math.max(0, current - 1).toString());
     } else if (type === 'totalSecs') {
       const current = parseInt(totalTimeSecsInput) || 0;
-      const next = (current - 1 + 60) % 60;
+      const next = (current - 5 + 60) % 60;
       handleTotalSecsInputChange(next.toString().padStart(2, '0'));
     } else if (type === 'intervalMins') {
       const current = parseInt(intervalMinsInput) || 0;
       handleIntervalMinsInputChange(Math.max(0, current - 1).toString());
     } else if (type === 'intervalSecs') {
       const current = parseInt(intervalSecsInput) || 0;
-      const next = (current - 1 + 60) % 60;
+      const next = (current - 5 + 60) % 60;
       handleIntervalSecsInputChange(next.toString().padStart(2, '0'));
     } else if (type === 'intervalCount') {
       const current = parseInt(intervalCountInput) || 1;
