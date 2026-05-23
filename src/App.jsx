@@ -512,6 +512,33 @@ function App() {
     setTimeLeft(totalTime);
   };
 
+  const handleIntervalInputModeChange = (newMode) => {
+    setIntervalInputMode(newMode);
+    
+    if (newMode === 'time') {
+      // Synchronize to the nearest whole second
+      const roundedTime = Math.round(intervalX);
+      setIntervalX(roundedTime);
+      
+      // If the rounded time is exactly half-time, it's no longer custom
+      if (roundedTime === Math.round(totalTime / 2)) {
+        setIsCustomInterval(false);
+      }
+    } else if (newMode === 'count') {
+      // Synchronize to the nearest whole count division
+      const count = intervalX > 0 ? Math.round(totalTime / intervalX) : 2;
+      if (count >= 1) {
+        const calculatedInterval = totalTime / count;
+        setIntervalX(calculatedInterval);
+        
+        // If the count is 2 (which corresponds to half-time), it's no longer custom
+        if (count === 2 || Math.round(calculatedInterval) === Math.round(totalTime / 2)) {
+          setIsCustomInterval(false);
+        }
+      }
+    }
+  };
+
   return (
     <div className="app-container">
       <h1 className="title">Spring Meditation</h1>
@@ -640,14 +667,14 @@ function App() {
                   <button 
                     type="button"
                     className={`segmented-btn ${intervalInputMode === 'time' ? 'active' : ''}`}
-                    onClick={() => setIntervalInputMode('time')}
+                    onClick={() => handleIntervalInputModeChange('time')}
                   >
                     By Time
                   </button>
                   <button 
                     type="button"
                     className={`segmented-btn ${intervalInputMode === 'count' ? 'active' : ''}`}
-                    onClick={() => setIntervalInputMode('count')}
+                    onClick={() => handleIntervalInputModeChange('count')}
                   >
                     By Count
                   </button>
