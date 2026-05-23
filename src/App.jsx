@@ -568,8 +568,14 @@ function App() {
         </div>
 
         {showSettings && (
-          <div className="settings-panel">
-            <h3 className="settings-title">Session Options</h3>
+          <>
+            <div className="ios-sheet-scrim" onClick={() => setShowSettings(false)}></div>
+            <div className="settings-panel">
+              <div className="ios-drag-handle"></div>
+              <div className="settings-header">
+                <h3 className="settings-title">Session Options</h3>
+                <button className="ios-close-btn" onClick={() => setShowSettings(false)}>✕</button>
+              </div>
             
             {/* Total Duration Slider & Direct Input Option */}
             <div className="setting-row">
@@ -924,6 +930,7 @@ function App() {
               )}
             </div>
           </div>
+          </>
         )}
       </div>
     </div>
