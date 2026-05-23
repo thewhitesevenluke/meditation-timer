@@ -229,22 +229,35 @@
 }
 
 .reset-auto-btn {
-  background: none;
-  border: none;
-  color: #B8860B;
-  font-size: 0.8rem;
-  font-weight: 600;
+  display: block;
+  width: 100%;
+  max-width: 280px;
+  margin: 14px auto 4px auto;
+  background: rgba(255, 255, 255, 0.45);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  color: #8B7355;
+  font-size: 0.75rem;
+  font-weight: 700;
   cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-  margin-top: 0.2rem;
-  text-align: left;
-  width: fit-content;
-  transition: color 0.2s;
+  padding: 8px 16px;
+  border-radius: 10px;
+  text-align: center;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 4px rgba(212, 175, 55, 0.1);
+  text-decoration: none;
+  font-family: inherit;
 }
 
 .reset-auto-btn:hover {
-  color: #8B7355;
+  background: rgba(255, 255, 255, 0.75);
+  border-color: rgba(212, 175, 55, 0.6);
+  color: #B8860B;
+  box-shadow: 0 4px 8px rgba(212, 175, 55, 0.2);
+  transform: translateY(-1px);
+}
+
+.reset-auto-btn:active {
+  transform: translateY(0) scale(0.98);
 }
 
 /* Timer Display styles */
