@@ -541,7 +541,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <h1 className="title">Spring Meditation</h1>
+      <h1 className="title">Golden Meditation</h1>
       
       {/* Circular Timer Display */}
       <TimerDisplay 

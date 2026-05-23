@@ -1,6 +1,6 @@
 {
-  "appId": "com.lukex.springmeditation",
-  "appName": "Spring Meditation",
+  "appId": "com.lukex.goldenmeditation",
+  "appName": "Golden Meditation",
   "webDir": "dist",
   "bundledWebRuntime": false
 }
