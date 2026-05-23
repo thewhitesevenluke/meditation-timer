@@ -156,15 +156,17 @@ function App() {
     }
   };
 
-  // Play the deep Tibetan bowl gong (original natural pitch, volume 1.4 for smooth, resonant volume)
+  // Play the deep Tibetan bowl gong (low-pitched, highly hearable hit, volume 2.0)
   const playGong = () => {
-    playBuffer(startBuffer, 1.0, 1.4, true);
+    playBuffer(startBuffer, 0.85, 2.0, true);
   };
 
   // Play the calm, natural accent chime at interval marks (supports custom selections)
   const playIntervalGong = (soundType = intervalSound) => {
     const buffer = soundType === 'bowl' ? startBuffer : tingshaBuffer;
-    playBuffer(buffer, 1.0, 1.4, soundType === 'bowl');
+    const rate = soundType === 'bowl' ? 0.85 : 1.0;
+    const volume = soundType === 'bowl' ? 2.0 : 1.4;
+    playBuffer(buffer, rate, volume, soundType === 'bowl');
   };
 
   const playEndGong = () => {
