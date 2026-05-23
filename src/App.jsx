@@ -540,8 +540,10 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <h1 className="title">Golden Meditation</h1>
+    <>
+      <div className="ios-native-bg"></div>
+      <div className="app-container">
+        <h1 className="title">Golden Meditation</h1>
       
       {/* Circular Timer Display */}
       <TimerDisplay 
@@ -595,6 +597,7 @@ function App() {
                     <input 
                       type="text" 
                       pattern="[0-9]*"
+                      inputMode="numeric"
                       value={totalTimeMinsInput} 
                       onChange={(e) => handleTotalMinsInputChange(e.target.value)}
                       onFocus={() => setFocusedInput('totalMins')}
@@ -625,6 +628,7 @@ function App() {
                     <input 
                       type="text" 
                       pattern="[0-9]*"
+                      inputMode="numeric"
                       value={totalTimeSecsInput} 
                       onChange={(e) => handleTotalSecsInputChange(e.target.value)}
                       onFocus={() => setFocusedInput('totalSecs')}
@@ -705,6 +709,7 @@ function App() {
                         <input 
                           type="text" 
                           pattern="[0-9]*"
+                          inputMode="numeric"
                           value={intervalMinsInput} 
                           onChange={(e) => handleIntervalMinsInputChange(e.target.value)}
                           onFocus={() => setFocusedInput('intervalMins')}
@@ -735,6 +740,7 @@ function App() {
                         <input 
                           type="text" 
                           pattern="[0-9]*"
+                          inputMode="numeric"
                           value={intervalSecsInput} 
                           onChange={(e) => handleIntervalSecsInputChange(e.target.value)}
                           onFocus={() => setFocusedInput('intervalSecs')}
@@ -788,6 +794,7 @@ function App() {
                         <input 
                            type="text" 
                            pattern="[0-9]*"
+                           inputMode="numeric"
                            value={intervalCountInput} 
                            onChange={(e) => handleIntervalCountInputChange(e.target.value)}
                            onFocus={() => setFocusedInput('intervalCount')}
@@ -884,6 +891,7 @@ function App() {
                       <input 
                         type="text" 
                         pattern="[0-9]*"
+                        inputMode="numeric"
                         value={countdownDurationInput} 
                         onChange={(e) => handleCountdownDurationInputChange(e.target.value)}
                         onFocus={() => setFocusedInput('countdown')}
@@ -934,6 +942,7 @@ function App() {
         )}
       </div>
     </div>
+    </>
   );
 }
 

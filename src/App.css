@@ -14,6 +14,23 @@ button, input, select, textarea {
   outline: none;
 }
 
+.ios-native-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: -2;
+  background: linear-gradient(rgba(218, 165, 32, 0.35), rgba(139, 115, 85, 0.55)), 
+              url('/buddha.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
 .app-container {
   display: flex;
   flex-direction: column;

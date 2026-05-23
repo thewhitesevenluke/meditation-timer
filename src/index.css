@@ -9,21 +9,21 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-body {
+html, body, #root {
   margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: fixed;
   display: flex;
   place-items: center;
   justify-content: center;
-  min-width: 320px;
-  min-height: 100vh;
-  /* A beautiful painting of a Buddha statue sitting under a golden tree, with a strong warm golden-bronze sunset tint overlay */
-  background: linear-gradient(rgba(218, 165, 32, 0.35), rgba(139, 115, 85, 0.55)), 
-              url('/buddha.jpg');
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  background-attachment: fixed;
+}
+
+body {
   color: #2c3e50;
+  background: #3E2723; /* fallback background color */
 }
 
 #root {
