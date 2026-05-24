@@ -1,8 +1,9 @@
 import React from 'react';
 
 function TimerDisplay({ time, isRunning, isCountdown }) {
-  const minutes = Math.floor(time / 60);
-  const seconds = time % 60;
+  const roundedTime = Math.round(time);
+  const minutes = Math.floor(roundedTime / 60);
+  const seconds = roundedTime % 60;
 
   const formattedTime = isCountdown 
     ? `${time}` 
