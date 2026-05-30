@@ -142,18 +142,7 @@ struct MeditationAppView: View {
             .edgesIgnoringSafeArea(.all)
             
             // 2. Main Content
-            VStack(spacing: 0) {
-                Spacer()
-
-                // Circular Timer
-                timerCircleView
-                
-                Spacer()
-                
-                // Controls Group
-                controlsGroupView
-                    .padding(.bottom, 40)
-            }
+            mainContentView
             
             // 3. Apple-Style Fixed Bottom Sheet settings panel
             if showSettings {
@@ -184,6 +173,43 @@ struct MeditationAppView: View {
     }
     
     // MARK: - Subviews
+
+    private var isSessionActive: Bool {
+        isRunning || countdownActive || timeLeft < totalTime
+    }
+
+    private var mainContentView: some View {
+        VStack(spacing: 0) {
+            Spacer(minLength: isSessionActive ? 90 : 18)
+
+            timerCircleView
+
+            sessionSummaryView
+                .padding(.top, 14)
+
+            if isSessionActive {
+                Spacer()
+
+                focusControlsGroupView
+                    .padding(.horizontal, 34)
+                    .padding(.bottom, 40)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                setupOptionsPanelView
+                    .padding(.top, 22)
+                    .padding(.horizontal, 20)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+
+                Spacer(minLength: 20)
+
+                setupStartButton
+                    .padding(.horizontal, 34)
+                    .padding(.bottom, 32)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.28), value: isSessionActive)
+    }
     
     private var homeBackgroundImageView: Image {
         if let path = Bundle.main.path(forResource: "buddha-ios-home", ofType: "jpg", inDirectory: "public"),
@@ -206,7 +232,7 @@ struct MeditationAppView: View {
             // Solid Inner Timer Card
             Circle()
                 .fill(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.4))
-                .frame(width: 240, height: 240)
+                .frame(width: isSessionActive ? 240 : 200, height: isSessionActive ? 240 : 200)
                 .shadow(color: Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.1), radius: 24, x: 0, y: 8)
             
             // Timer details
@@ -220,9 +246,173 @@ struct MeditationAppView: View {
                 }
                 
                 Text(formatTime(countdownActive ? countdownTimeLeft : timeLeft))
-                    .font(.system(size: 64, weight: .thin, design: .rounded))
+                    .font(.system(size: isSessionActive ? 64 : 52, weight: .thin, design: .rounded))
                     .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
                     .shadow(color: Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.8), radius: 4, x: 0, y: 2)
+            }
+        }
+    }
+
+    private var sessionSummaryView: some View {
+        VStack(spacing: 8) {
+            if countdownActive {
+                Text("Start in \(Int(ceil(countdownTimeLeft)))")
+                    .font(.system(size: 15, weight: .bold, design: .rounded))
+                    .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0))
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 16)
+                    .background(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0).opacity(0.72))
+                    .clipShape(Capsule())
+            }
+
+            HStack(spacing: 8) {
+                Image(systemName: "bell.fill")
+                    .font(.system(size: 13, weight: .bold))
+                Text(intervalSummaryText)
+                    .font(.system(size: 14, weight: .bold, design: .rounded))
+            }
+            .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0))
+            .padding(.vertical, 8)
+            .padding(.horizontal, 16)
+            .background(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0).opacity(0.62))
+            .clipShape(Capsule())
+        }
+    }
+
+    private var setupOptionsPanelView: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 8) {
+                HStack {
+                    Text("Meditation Time")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
+                    Spacer()
+                    Text("\(Int(totalTime / 60)) min")
+                        .font(.system(size: 15, weight: .bold, design: .rounded))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
+                }
+
+                Slider(value: Binding(get: { totalTime }, set: { val in
+                    updateTotalTime(val)
+                }), in: 60...maxMeditationTime, step: 60)
+                .accentColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
+
+                HStack {
+                    Text("1 min")
+                    Spacer()
+                    Text("60 min")
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.72))
+            }
+
+            Divider()
+                .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.22))
+
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Intermediate gongs")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
+                    Text(intervalSummaryText)
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.9))
+                }
+
+                Spacer()
+
+                stepperTextField(value: $intervalCountInput, suffix: "x", field: "intervalCount", increment: { adjustValue(type: "intervalCount", up: true) }, decrement: { adjustValue(type: "intervalCount", up: false) })
+            }
+
+            HStack(alignment: .center, spacing: 12) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Preparation")
+                        .font(.system(size: 15, weight: .bold))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
+                    Text(isCountdownEnabled ? "\(Int(countdownDuration)) seconds before start" : "Start immediately")
+                        .font(.system(size: 12, weight: .semibold, design: .rounded))
+                        .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.9))
+                }
+
+                Spacer()
+
+                Toggle("", isOn: $isCountdownEnabled)
+                    .labelsHidden()
+                    .toggleStyle(SwitchToggleStyle(tint: Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)))
+            }
+
+            Button(action: {
+                triggerHaptic()
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    showSettings = true
+                }
+            }) {
+                Text("More settings")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+            }
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(Color(red: 28.0 / 255.0, green: 22.0 / 255.0, blue: 18.0 / 255.0).opacity(0.44))
+                .background(
+                    VisualEffectBlur(blurStyle: .systemUltraThinMaterialDark)
+                        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                )
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.22), lineWidth: 1)
+        )
+        .shadow(color: Color.black.opacity(0.18), radius: 20, x: 0, y: 12)
+    }
+
+    private var setupStartButton: some View {
+        Button(action: toggleTimer) {
+            Text("Start")
+                .font(.system(size: 23, weight: .bold))
+                .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                .frame(maxWidth: .infinity)
+                .frame(height: 56)
+                .background(
+                    LinearGradient(
+                        gradient: Gradient(colors: [Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0), Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)]),
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    )
+                )
+                .cornerRadius(28)
+                .shadow(color: Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.28), radius: 12, x: 0, y: 6)
+        }
+    }
+
+    private var focusControlsGroupView: some View {
+        HStack(spacing: 16) {
+            Button(action: toggleTimer) {
+                Text(isRunning ? "Pause" : "Resume")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0).opacity(0.92))
+                    .cornerRadius(26)
+            }
+
+            Button(action: resetTimer) {
+                Text("Stop")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 52)
+                    .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.86))
+                    .cornerRadius(26)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 26)
+                            .stroke(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.35), lineWidth: 1)
+                    )
             }
         }
     }
@@ -291,7 +481,7 @@ struct MeditationAppView: View {
             
             // Title & Native Close Button
             HStack {
-                Text("Session Options")
+                Text("More Settings")
                     .font(.system(size: 17, weight: .bold))
                     .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
                 
@@ -332,23 +522,7 @@ struct MeditationAppView: View {
                     }
                     
                     Slider(value: Binding(get: { totalTime }, set: { val in
-                        totalTime = val
-                        timeLeft = val
-                        isRunning = false
-                        if intervalInputMode == "count" {
-                            intervalX = val / Double(max(1, intervalCount))
-                        } else {
-                            if !isCustomInterval {
-                                intervalX = round(val / 2)
-                                intervalCount = 2
-                            } else if intervalX > val {
-                                intervalX = val
-                                intervalCount = 1
-                            } else {
-                                intervalCount = Int(round(val / intervalX))
-                            }
-                        }
-                        syncAllInputs()
+                        updateTotalTime(val)
                     }), in: 60...maxMeditationTime, step: 60)
                     .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
                 }
@@ -547,6 +721,11 @@ struct MeditationAppView: View {
             return "\(secs)s"
         }
     }
+
+    private var intervalSummaryText: String {
+        let count = intervalInputMode == "count" ? intervalCount : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
+        return "\(max(1, count))x every \(getCountIntervalLengthText())"
+    }
     
     private func formatTime(_ seconds: TimeInterval) -> String {
         let totalRounded = Int(round(seconds))
@@ -563,10 +742,41 @@ struct MeditationAppView: View {
             player.stop()
         }
     }
+
+    private func updateTotalTime(_ value: TimeInterval) {
+        let capped = min(maxMeditationTime, max(60, value))
+        totalTime = capped
+        timeLeft = capped
+        isRunning = false
+        countdownActive = false
+        sessionStartTime = nil
+        accumulatedElapsed = 0
+        lastProcessedSecond = 0
+
+        if intervalInputMode == "count" {
+            intervalX = capped / Double(max(1, intervalCount))
+        } else {
+            if !isCustomInterval {
+                intervalX = round(capped / 2)
+                intervalCount = 2
+            } else if intervalX > capped {
+                intervalX = capped
+                intervalCount = 1
+            } else {
+                intervalCount = Int(round(capped / intervalX))
+            }
+        }
+
+        silentPlayer?.stop()
+        bgTimer.stop()
+        syncAllInputs()
+    }
     
     private func toggleTimer() {
         triggerHaptic()
         if !isRunning {
+            hideKeyboard()
+            showSettings = false
             if timeLeft == totalTime && !countdownActive {
                 if isCountdownEnabled {
                     countdownActive = true
@@ -603,6 +813,8 @@ struct MeditationAppView: View {
     
     private func resetTimer() {
         triggerHaptic()
+        hideKeyboard()
+        showSettings = false
         isRunning = false
         countdownActive = false
         sessionStartTime = nil

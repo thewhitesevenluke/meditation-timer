@@ -2,6 +2,8 @@
 
 Golden Meditation is an iOS-first meditation timer. The production iPhone app is native SwiftUI, while the React + Vite code lives under `web/` as the web layer.
 
+The app is inspired by [Gongmeister](http://gongmeister.app/), while being tailored for personal preferences, reliable background running when the app is closed, walking meditation, and other practice-specific flows.
+
 ## Start Here
 
 - iOS app notes: [`ios/README.md`](ios/README.md)
