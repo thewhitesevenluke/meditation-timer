@@ -2,6 +2,10 @@ import UIKit
 import SwiftUI
 import AVFoundation
 
+private let maxMeditationTime: TimeInterval = 60 * 60
+private let defaultCountdownDuration: TimeInterval = 15
+private let maxCountdownDuration: TimeInterval = 60
+
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
@@ -83,10 +87,10 @@ struct MeditationAppView: View {
     @State private var intervalCount: Int = 2 // Persistent numeric gong count state
     
     // Countdown State
-    @State private var isCountdownEnabled = false
-    @State private var countdownDuration: TimeInterval = 10
+    @State private var isCountdownEnabled = true
+    @State private var countdownDuration: TimeInterval = defaultCountdownDuration
     @State private var countdownActive = false
-    @State private var countdownTimeLeft: TimeInterval = 10
+    @State private var countdownTimeLeft: TimeInterval = defaultCountdownDuration
     
     // Bottom Sheet Visibility
     @State private var showSettings = false
@@ -97,7 +101,7 @@ struct MeditationAppView: View {
     @State private var intervalMinsInput = "7"
     @State private var intervalSecsInput = "30"
     @State private var intervalCountInput = "2"
-    @State private var countdownDurationInput = "10"
+    @State private var countdownDurationInput = String(Int(defaultCountdownDuration))
     
     // Focused state to show step buttons
     @State private var focusedField: String? = nil
@@ -116,15 +120,37 @@ struct MeditationAppView: View {
     
     var body: some View {
         ZStack {
-            // 1. Immersive Buddha Background (aligned to trailing to keep Buddha centered & fully visible on iPhone)
+            // 1. Immersive Buddha Background (native layered crop for iPhone portrait)
             GeometryReader { geometry in
-                buddhaImageView
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
+                ZStack {
+                    buddhaImageView
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .offset(x: -geometry.size.height * 0.44)
+                        .clipped()
+
+                    buddhaImageView
+                        .resizable()
+                        .aspectRatio(contentMode: .fill)
+                        .frame(width: geometry.size.width, height: geometry.size.height)
+                        .offset(x: -geometry.size.height * 0.34)
+                        .scaleEffect(0.78)
+                        .opacity(0.96)
+                        .mask(
+                            LinearGradient(
+                                gradient: Gradient(stops: [
+                                    .init(color: .clear, location: 0.00),
+                                    .init(color: .black, location: 0.12),
+                                    .init(color: .black, location: 0.88),
+                                    .init(color: .clear, location: 1.00)
+                                ]),
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        )
+                }
                     .frame(width: geometry.size.width, height: geometry.size.height)
-                    .offset(x: -geometry.size.height * 0.44) // Mathematically precise alignment to center the Buddha (at 85% of landscape width)
-                    .frame(width: geometry.size.width, height: geometry.size.height)
-                    .clipped()
             }
             .edgesIgnoringSafeArea(.all)
             
@@ -142,14 +168,7 @@ struct MeditationAppView: View {
             // 2. Main Content
             VStack(spacing: 0) {
                 Spacer()
-                
-                Text("GOLDEN MEDITATION")
-                    .font(.system(size: 24, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                    .tracking(2.0)
-                    .shadow(color: Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 35.0 / 255.0).opacity(0.25), radius: 6, x: 0, y: 2)
-                    .padding(.bottom, 40)
-                
+
                 // Circular Timer
                 timerCircleView
                 
@@ -358,7 +377,7 @@ struct MeditationAppView: View {
                             }
                         }
                         syncAllInputs()
-                    }), in: 60...5400, step: 60)
+                    }), in: 60...maxMeditationTime, step: 60)
                     .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
                 }
                 
@@ -689,7 +708,7 @@ struct MeditationAppView: View {
             let mins = Int(totalMinsInput) ?? 0
             let newTotal = TimeInterval(mins * 60)
             if newTotal >= 60 {
-                let capped = min(10800, newTotal) // 3 hours
+                let capped = min(maxMeditationTime, newTotal)
                 totalTime = capped
                 timeLeft = capped
                 isRunning = false
@@ -736,8 +755,8 @@ struct MeditationAppView: View {
             syncAllInputs()
             
         case "countdown":
-            let val = Int(countdownDurationInput) ?? 10
-            countdownDuration = max(3, min(300, TimeInterval(val)))
+            let val = Int(countdownDurationInput) ?? Int(defaultCountdownDuration)
+            countdownDuration = max(3, min(maxCountdownDuration, TimeInterval(val)))
             syncAllInputs()
             
         default:
@@ -767,7 +786,7 @@ struct MeditationAppView: View {
             intervalCountInput = String(max(1, current + (up ? 1 : -1)))
             commitField("intervalCount")
         case "countdown":
-            let current = Int(countdownDurationInput) ?? 10
+            let current = Int(countdownDurationInput) ?? Int(defaultCountdownDuration)
             countdownDurationInput = String(max(3, current + (up ? 1 : -1)))
             commitField("countdown")
         default:
