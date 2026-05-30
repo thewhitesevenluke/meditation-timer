@@ -70,21 +70,25 @@ class BackgroundTimer: ObservableObject {
 
 struct MeditationAppView: View {
     // Session State
-    @State private var totalTime: TimeInterval = 15 * 60 // 15 mins default
-    @State private var timeLeft: TimeInterval = 15 * 60
+    @State private var totalTime: TimeInterval = 20 * 60 // 20 mins default
+    @State private var timeLeft: TimeInterval = 20 * 60
     @State private var isRunning = false
     
     // Absolute Time Tracking State for flawless background running
     @State private var sessionStartTime: Date? = nil
     @State private var accumulatedElapsed: TimeInterval = 0
     @State private var lastProcessedSecond: Int = 0
+    @State private var overtimeActive = false
+    @State private var overtimeStartTime: Date? = nil
+    @State private var overtimeAccumulated: TimeInterval = 0
+    @State private var overtimeElapsed: TimeInterval = 0
     
     // Interval State
-    @State private var intervalX: TimeInterval = 7.5 * 60
+    @State private var intervalX: TimeInterval = 10 * 60
     @State private var isCustomInterval = false
     @State private var intervalSound = "tingsha" // "bowl" or "tingsha"
     @State private var intervalInputMode = "count" // Default is 'count'
-    @State private var intervalCount: Int = 2 // Persistent numeric gong count state
+    @State private var intervalCount: Int = 2 // Persistent section count state
     
     // Countdown State
     @State private var isCountdownEnabled = true
@@ -94,11 +98,11 @@ struct MeditationAppView: View {
     
     // Bottom Sheet Visibility
     @State private var showSettings = false
+    @GestureState private var settingsDragOffset: CGFloat = 0
     
     // Text Inputs (synchronized with values on commit/blur)
-    @State private var totalMinsInput = "15"
-    @State private var totalSecsInput = "00"
-    @State private var intervalMinsInput = "7"
+    @State private var totalMinsInput = "20"
+    @State private var intervalMinsInput = "10"
     @State private var intervalSecsInput = "30"
     @State private var intervalCountInput = "2"
     @State private var countdownDurationInput = String(Int(defaultCountdownDuration))
@@ -110,10 +114,7 @@ struct MeditationAppView: View {
     @State private var startPlayer: AVAudioPlayer?
     @State private var tingshaPlayer: AVAudioPlayer?
     @State private var silentPlayer: AVAudioPlayer? // Looped silent audio to keep app executing in background
-    
-    // Breathing Outer Ring Animation States
-    @State private var breathingScale: CGFloat = 0.95
-    @State private var breathingOpacity: Double = 0.8
+    @State private var endGongReplayWorkItem: DispatchWorkItem?
     
     // Background-safe dispatcher
     @StateObject private var bgTimer = BackgroundTimer()
@@ -133,8 +134,8 @@ struct MeditationAppView: View {
             // Warm Golden Overlay
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(red: 218.0 / 255.0, green: 165.0 / 255.0, blue: 32.0 / 255.0).opacity(0.35),
-                    Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.55)
+                    Color(red: 223.0 / 255.0, green: 172.0 / 255.0, blue: 54.0 / 255.0).opacity(0.38),
+                    Color(red: 82.0 / 255.0, green: 69.0 / 255.0, blue: 39.0 / 255.0).opacity(0.5)
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -151,10 +152,7 @@ struct MeditationAppView: View {
                     Color.black.opacity(0.25)
                         .edgesIgnoringSafeArea(.all)
                         .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.3)) {
-                                hideKeyboard()
-                                showSettings = false
-                            }
+                            dismissSettings()
                         }
                     
                     // Slide up native SwiftUI Options sheet
@@ -168,24 +166,51 @@ struct MeditationAppView: View {
         .onAppear {
             loadAudioEngine()
             syncAllInputs()
-            startBreathingAnimation()
         }
     }
     
     // MARK: - Subviews
 
+    private var dhammaGold: Color {
+        Color(red: 224.0 / 255.0, green: 174.0 / 255.0, blue: 64.0 / 255.0)
+    }
+
+    private var dhammaDeepGold: Color {
+        Color(red: 197.0 / 255.0, green: 145.0 / 255.0, blue: 43.0 / 255.0)
+    }
+
+    private var dhammaSoftGold: Color {
+        Color(red: 246.0 / 255.0, green: 217.0 / 255.0, blue: 151.0 / 255.0)
+    }
+
+    private var dhammaAntiqueGold: Color {
+        Color(red: 176.0 / 255.0, green: 137.0 / 255.0, blue: 62.0 / 255.0)
+    }
+
+    private var dhammaInk: Color {
+        Color(red: 44.0 / 255.0, green: 37.0 / 255.0, blue: 22.0 / 255.0)
+    }
+
+    private var dhammaPanel: Color {
+        Color(red: 34.0 / 255.0, green: 31.0 / 255.0, blue: 21.0 / 255.0)
+    }
+
+    private var dhammaPanelStrong: Color {
+        Color(red: 24.0 / 255.0, green: 23.0 / 255.0, blue: 17.0 / 255.0)
+    }
+
     private var isSessionActive: Bool {
-        isRunning || countdownActive || timeLeft < totalTime
+        isRunning || countdownActive || overtimeActive || timeLeft < totalTime
     }
 
     private var mainContentView: some View {
         VStack(spacing: 0) {
-            Spacer(minLength: isSessionActive ? 90 : 18)
+            Spacer(minLength: 312)
 
             timerCircleView
 
             sessionSummaryView
-                .padding(.top, 14)
+                .padding(.top, isSessionActive ? 14 : 0)
 
             if isSessionActive {
                 Spacer()
@@ -195,14 +220,14 @@ struct MeditationAppView: View {
                     .padding(.bottom, 40)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             } else {
+                Spacer(minLength: 28)
+
                 setupOptionsPanelView
-                    .padding(.top, 22)
                     .padding(.horizontal, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
 
-                Spacer(minLength: 20)
-
                 setupStartButton
+                    .padding(.top, 18)
                     .padding(.horizontal, 34)
                     .padding(.bottom, 32)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -229,53 +254,54 @@ struct MeditationAppView: View {
     
     private var timerCircleView: some View {
         ZStack {
-            // Solid Inner Timer Card
-            Circle()
-                .fill(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.4))
-                .frame(width: isSessionActive ? 240 : 200, height: isSessionActive ? 240 : 200)
-                .shadow(color: Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.1), radius: 24, x: 0, y: 8)
-            
             // Timer details
-            VStack(spacing: 2) {
-                if countdownActive {
-                    Text("PREPARE")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 196.0 / 255.0, green: 146.0 / 255.0, blue: 62.0 / 255.0))
-                        .tracking(1.5)
-                        .opacity(breathingOpacity)
+            VStack(spacing: isSessionActive ? 10 : 2) {
+                if countdownActive || overtimeActive {
+                    Text(overtimeActive ? "Extra time" : "Preparing")
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundColor(dhammaSoftGold)
+                        .padding(.vertical, 7)
+                        .padding(.horizontal, 16)
+                        .background(dhammaPanelStrong.opacity(0.58))
+                        .clipShape(Capsule())
                 }
                 
-                Text(formatTime(countdownActive ? countdownTimeLeft : timeLeft))
-                    .font(.system(size: isSessionActive ? 64 : 52, weight: .thin, design: .rounded))
-                    .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                    .shadow(color: Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.8), radius: 4, x: 0, y: 2)
+                Text(formatTime(overtimeActive ? overtimeElapsed : (countdownActive ? countdownTimeLeft : timeLeft)))
+                    .font(.system(size: isSessionActive ? 74 : 72, weight: .light, design: .rounded))
+                    .foregroundColor(dhammaSoftGold)
+                    .shadow(color: Color.black.opacity(0.46), radius: isSessionActive ? 8 : 7, x: 0, y: 3)
+                    .monospacedDigit()
             }
+            .padding(.vertical, isSessionActive ? 18 : 12)
+            .padding(.horizontal, isSessionActive ? 26 : 24)
+            .frame(minWidth: isSessionActive ? 260 : 282)
+            .background(
+                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                    .fill(dhammaPanelStrong.opacity(isSessionActive ? 0.52 : 0.44))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 34, style: .continuous)
+                    .stroke(dhammaGold.opacity(isSessionActive ? 0.16 : 0.28), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(isSessionActive ? 0.22 : 0.28), radius: 18, x: 0, y: 10)
         }
     }
 
     private var sessionSummaryView: some View {
         VStack(spacing: 8) {
-            if countdownActive {
-                Text("Start in \(Int(ceil(countdownTimeLeft)))")
-                    .font(.system(size: 15, weight: .bold, design: .rounded))
-                    .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0))
-                    .padding(.vertical, 7)
-                    .padding(.horizontal, 16)
-                    .background(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0).opacity(0.72))
-                    .clipShape(Capsule())
+            if let bellStatusText = sessionBellStatusText {
+                HStack(spacing: 8) {
+                    Image(systemName: "bell.fill")
+                        .font(.system(size: 13, weight: .bold))
+                    Text(bellStatusText)
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                }
+                .foregroundColor(dhammaSoftGold)
+                .padding(.vertical, 8)
+                .padding(.horizontal, 16)
+                .background(dhammaPanelStrong.opacity(0.62))
+                .clipShape(Capsule())
             }
-
-            HStack(spacing: 8) {
-                Image(systemName: "bell.fill")
-                    .font(.system(size: 13, weight: .bold))
-                Text(intervalSummaryText)
-                    .font(.system(size: 14, weight: .bold, design: .rounded))
-            }
-            .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0))
-            .padding(.vertical, 8)
-            .padding(.horizontal, 16)
-            .background(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0).opacity(0.62))
-            .clipShape(Capsule())
         }
     }
 
@@ -283,55 +309,73 @@ struct MeditationAppView: View {
         VStack(spacing: 14) {
             VStack(spacing: 8) {
                 HStack {
-                    Text("Meditation Time")
-                        .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
-                    Spacer()
-                    Text("\(Int(totalTime / 60)) min")
-                        .font(.system(size: 15, weight: .bold, design: .rounded))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
+                    Text("Duration")
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundColor(dhammaSoftGold.opacity(0.9))
+                    Spacer(minLength: 0)
                 }
 
                 Slider(value: Binding(get: { totalTime }, set: { val in
                     updateTotalTime(val)
                 }), in: 60...maxMeditationTime, step: 60)
-                .accentColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
-
-                HStack {
-                    Text("1 min")
-                    Spacer()
-                    Text("60 min")
-                }
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.72))
+                .accentColor(dhammaGold)
             }
 
             Divider()
-                .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.22))
+                .background(dhammaGold.opacity(0.24))
 
             HStack(alignment: .center, spacing: 12) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Intermediate gongs")
+                HStack(spacing: 10) {
+                    Image(systemName: effectiveIntervalCount > 1 ? "chart.bar.fill" : "bell.slash.fill")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
-                    Text(intervalSummaryText)
-                        .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.9))
+                        .foregroundColor(dhammaGold)
+                        .frame(width: 28, height: 28)
+                        .background(dhammaGold.opacity(0.18))
+                        .clipShape(Circle())
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(intervalInputMode == "count" ? "Interval bells" : "Bell interval")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(dhammaSoftGold)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.86)
+                        Text(intermediateBellSummaryText)
+                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                            .foregroundColor(dhammaSoftGold.opacity(0.82))
+                    }
                 }
 
                 Spacer()
 
-                stepperTextField(value: $intervalCountInput, suffix: "x", field: "intervalCount", increment: { adjustValue(type: "intervalCount", up: true) }, decrement: { adjustValue(type: "intervalCount", up: false) })
+                if intervalInputMode == "count" {
+                    bellCountStepperView
+                } else {
+                    Image(systemName: "clock")
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(dhammaGold)
+                        .frame(width: 40, height: 32)
+                        .background(dhammaGold.opacity(0.14))
+                        .clipShape(Capsule())
+                }
             }
+            .padding(10)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(dhammaPanelStrong.opacity(0.58))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .stroke(dhammaGold.opacity(0.3), lineWidth: 1)
+            )
 
             HStack(alignment: .center, spacing: 12) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Preparation")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0))
+                        .foregroundColor(dhammaSoftGold)
                     Text(isCountdownEnabled ? "\(Int(countdownDuration)) seconds before start" : "Start immediately")
                         .font(.system(size: 12, weight: .semibold, design: .rounded))
-                        .foregroundColor(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.9))
+                        .foregroundColor(dhammaSoftGold.opacity(0.78))
                 }
 
                 Spacer()
@@ -349,37 +393,37 @@ struct MeditationAppView: View {
             }) {
                 Text("More settings")
                     .font(.system(size: 15, weight: .bold))
-                    .foregroundColor(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0))
+                    .foregroundColor(dhammaGold)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 6)
             }
         }
         .padding(16)
         .background(
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .fill(Color(red: 28.0 / 255.0, green: 22.0 / 255.0, blue: 18.0 / 255.0).opacity(0.44))
+                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .fill(dhammaPanel.opacity(0.68))
                 .background(
-                    VisualEffectBlur(blurStyle: .systemUltraThinMaterialDark)
+                    VisualEffectBlur(blurStyle: .systemThinMaterialDark)
                         .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
                 )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 24, style: .continuous)
-                .stroke(Color(red: 255.0 / 255.0, green: 232.0 / 255.0, blue: 185.0 / 255.0).opacity(0.22), lineWidth: 1)
+                .stroke(dhammaGold.opacity(0.28), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.18), radius: 20, x: 0, y: 12)
+        .shadow(color: Color.black.opacity(0.26), radius: 22, x: 0, y: 12)
     }
 
     private var setupStartButton: some View {
         Button(action: toggleTimer) {
             Text("Start")
                 .font(.system(size: 23, weight: .bold))
-                .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                .foregroundColor(dhammaInk)
                 .frame(maxWidth: .infinity)
                 .frame(height: 56)
                 .background(
                     LinearGradient(
-                        gradient: Gradient(colors: [Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0), Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)]),
+                        gradient: Gradient(colors: [dhammaGold, dhammaDeepGold]),
                         startPoint: .topLeading,
                         endPoint: .bottomTrailing
                     )
@@ -389,22 +433,66 @@ struct MeditationAppView: View {
         }
     }
 
+    private var bellCountStepperView: some View {
+        HStack(spacing: 9) {
+            Button(action: {
+                triggerHaptic()
+                adjustValue(type: "intervalCount", up: false)
+            }) {
+                Image(systemName: "minus")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(dhammaSoftGold)
+                    .frame(width: 28, height: 28)
+                    .background(dhammaPanelStrong.opacity(0.5))
+                    .clipShape(Circle())
+            }
+
+            Text("\(effectiveIntervalCount)")
+                .font(.system(size: 14, weight: .bold, design: .rounded))
+                .foregroundColor(dhammaSoftGold)
+                .frame(width: 28)
+                .monospacedDigit()
+
+            Button(action: {
+                triggerHaptic()
+                adjustValue(type: "intervalCount", up: true)
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: 12, weight: .bold))
+                    .foregroundColor(dhammaSoftGold)
+                    .frame(width: 28, height: 28)
+                    .background(dhammaPanelStrong.opacity(0.5))
+                    .clipShape(Circle())
+            }
+        }
+        .padding(.vertical, 4)
+        .padding(.horizontal, 6)
+        .background(
+            Capsule()
+                .fill(dhammaPanelStrong.opacity(0.46))
+        )
+        .overlay(
+            Capsule()
+                .stroke(dhammaGold.opacity(0.34), lineWidth: 1)
+        )
+    }
+
     private var focusControlsGroupView: some View {
         HStack(spacing: 16) {
             Button(action: toggleTimer) {
                 Text(isRunning ? "Pause" : "Resume")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                    .foregroundColor(dhammaInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
-                    .background(Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0).opacity(0.92))
+                    .background(dhammaGold.opacity(0.92))
                     .cornerRadius(26)
             }
 
             Button(action: resetTimer) {
                 Text("Stop")
                     .font(.system(size: 18, weight: .bold))
-                    .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
+                    .foregroundColor(dhammaInk)
                     .frame(maxWidth: .infinity)
                     .frame(height: 52)
                     .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.86))
@@ -417,65 +505,11 @@ struct MeditationAppView: View {
         }
     }
     
-    private var controlsGroupView: some View {
-        HStack(spacing: 12) {
-            // Start/Pause Button
-            Button(action: toggleTimer) {
-                Text(isRunning ? "Pause" : "Start")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0))
-                    .frame(width: 100, height: 44)
-                    .background(
-                        LinearGradient(
-                            gradient: Gradient(colors: [Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0), Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)]),
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        )
-                    )
-                    .cornerRadius(22)
-                    .shadow(color: Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.3), radius: 8, x: 0, y: 4)
-            }
-            
-            // Reset Button
-            Button(action: resetTimer) {
-                Text("Reset")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                    .frame(width: 100, height: 44)
-                    .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.8))
-                    .cornerRadius(22)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22)
-                            .stroke(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.4), lineWidth: 1)
-                    )
-            }
-            
-            // Options Toggle Button
-            Button(action: {
-                triggerHaptic()
-                withAnimation(.easeInOut(duration: 0.3)) {
-                    showSettings = true
-                }
-            }) {
-                Text("Options")
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                    .frame(width: 100, height: 44)
-                    .background(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.8))
-                    .cornerRadius(22)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 22)
-                            .stroke(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.4), lineWidth: 1)
-                    )
-            }
-        }
-    }
-    
     private var settingsSheetView: some View {
         VStack(spacing: 16) {
             // Drag handle indicator
             RoundedRectangle(cornerRadius: 3)
-                .fill(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.25))
+                .fill(dhammaAntiqueGold.opacity(0.3))
                 .frame(width: 36, height: 5)
                 .padding(.top, 10)
             
@@ -483,56 +517,31 @@ struct MeditationAppView: View {
             HStack {
                 Text("More Settings")
                     .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                    .foregroundColor(dhammaAntiqueGold)
                 
                 Spacer()
                 
                 Button(action: {
                     triggerHaptic()
-                    withAnimation(.easeInOut(duration: 0.3)) {
-                        hideKeyboard()
-                        showSettings = false
-                    }
+                    dismissSettings()
                 }) {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                        .foregroundColor(dhammaAntiqueGold)
                         .frame(width: 28, height: 28)
-                        .background(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.12))
+                        .background(dhammaGold.opacity(0.14))
                         .clipShape(Circle())
                 }
             }
             .padding(.horizontal, 24)
             
             VStack(spacing: 20) {
-                
-                // ROW 1: Meditation Duration
-                VStack(alignment: .leading, spacing: 6) {
-                    HStack {
-                        Text("Meditation Time:")
-                            .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                        
-                        Spacer()
-                        
-                        // Direct text keypad group (Minutes only)
-                        HStack(spacing: 4) {
-                            stepperTextField(value: $totalMinsInput, suffix: "m", field: "totalMins", increment: { adjustValue(type: "totalMins", up: true) }, decrement: { adjustValue(type: "totalMins", up: false) })
-                        }
-                    }
-                    
-                    Slider(value: Binding(get: { totalTime }, set: { val in
-                        updateTotalTime(val)
-                    }), in: 60...maxMeditationTime, step: 60)
-                    .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
-                }
-                
-                // ROW 2: Gong Interval
+                // Advanced bell behavior
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text("Gong Interval:")
+                        Text("Bell spacing")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                            .foregroundColor(dhammaAntiqueGold)
                         
                         Spacer()
                         
@@ -548,9 +557,9 @@ struct MeditationAppView: View {
                     
                     if intervalInputMode == "time" {
                         HStack {
-                            Text("Interval Duration:")
+                            Text("Interval length")
                                 .font(.system(size: 13))
-                                .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.85))
+                                .foregroundColor(dhammaAntiqueGold.opacity(0.9))
                             Spacer()
                             HStack(spacing: 4) {
                                 stepperTextField(value: $intervalMinsInput, suffix: "m", field: "intervalMins", increment: { adjustValue(type: "intervalMins", up: true) }, decrement: { adjustValue(type: "intervalMins", up: false) })
@@ -568,30 +577,17 @@ struct MeditationAppView: View {
                         }), in: 5...max(5, totalTime), step: 5)
                         .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
                     } else {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    HStack(spacing: 4) {
-                                        Text("Once every:")
-                                            .font(.system(size: 13, weight: .semibold))
-                                            .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
-                                        Text(getCountIntervalLengthText())
-                                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                                            .foregroundColor(Color(red: 184.0 / 255.0, green: 134.0 / 255.0, blue: 11.0 / 255.0))
-                                    }
-                                }
-                                Spacer()
-                                stepperTextField(value: $intervalCountInput, suffix: "intervals", field: "intervalCount", increment: { adjustValue(type: "intervalCount", up: true) }, decrement: { adjustValue(type: "intervalCount", up: false) })
-                            }
-                        }
+                        Text(hasIntermediateBells ? "Sections are adjusted on the main screen. Current spacing: \(formatIntervalLengthText(intermediateBellSpacing))" : "1 section means end bell only.")
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundColor(dhammaAntiqueGold.opacity(0.78))
                     }
                 }
                 
-                // ROW 3: Sound Choice
+                // Sound Choice
                 HStack {
-                    Text("Interval Bell Sound:")
+                    Text("Bell sound:")
                         .font(.system(size: 14, weight: .semibold))
-                        .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                        .foregroundColor(dhammaAntiqueGold)
                     
                     Spacer()
                     
@@ -604,35 +600,32 @@ struct MeditationAppView: View {
                     )
                 }
                 
-                // ROW 4: Preparation Switch
+                // Preparation length only; the on/off switch lives on the main screen.
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("Preparation Countdown:")
+                        Text("Preparation length")
                             .font(.system(size: 14, weight: .semibold))
-                            .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                            .foregroundColor(dhammaAntiqueGold)
                         
                         Spacer()
                         
-                        if isCountdownEnabled {
-                            stepperTextField(value: $countdownDurationInput, suffix: "s", field: "countdown", increment: { adjustValue(type: "countdown", up: true) }, decrement: { adjustValue(type: "countdown", up: false) })
-                        }
-                        
-                        Toggle("", isOn: $isCountdownEnabled)
-                            .labelsHidden()
-                            .toggleStyle(SwitchToggleStyle(tint: Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)))
+                        stepperTextField(value: $countdownDurationInput, suffix: "s", field: "countdown", increment: { adjustValue(type: "countdown", up: true) }, decrement: { adjustValue(type: "countdown", up: false) })
                     }
                     
-                    if isCountdownEnabled {
-                        Slider(value: Binding(get: { countdownDuration }, set: { val in
-                            countdownDuration = val
-                            syncAllInputs()
-                        }), in: 5...60, step: 1)
-                        .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
-                    }
+                    Slider(value: Binding(get: { countdownDuration }, set: { val in
+                        countdownDuration = val
+                        syncAllInputs()
+                    }), in: 5...60, step: 1)
+                    .accentColor(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0))
                 }
             }
             .padding(.horizontal, 24)
-            .padding(.bottom, 34)
+
+            Text("Made by Luke for Dad, with Love ❤️😊")
+                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .foregroundColor(dhammaAntiqueGold.opacity(0.48))
+                .padding(.top, 2)
+                .padding(.bottom, 26)
         }
         .frame(maxWidth: .infinity)
         .background(
@@ -641,7 +634,22 @@ struct MeditationAppView: View {
                 .background(VisualEffectBlur(blurStyle: .systemMaterial))
         )
         .cornerRadius(24)
-        .shadow(color: Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0).opacity(0.18), radius: 32, x: 0, y: -8)
+        .shadow(color: dhammaInk.opacity(0.16), radius: 32, x: 0, y: -8)
+        .offset(y: settingsDragOffset)
+        .gesture(
+            DragGesture(minimumDistance: 12, coordinateSpace: .local)
+                .updating($settingsDragOffset) { value, state, _ in
+                    if value.translation.height > 0 {
+                        state = value.translation.height
+                    }
+                }
+                .onEnded { value in
+                    if value.translation.height > 70 || value.predictedEndTranslation.height > 140 {
+                        triggerHaptic()
+                        dismissSettings()
+                    }
+                }
+        )
     }
     
     // Direct numerical steppers helper
@@ -675,7 +683,7 @@ struct MeditationAppView: View {
             
             Text(suffix)
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundColor(Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                .foregroundColor(dhammaAntiqueGold)
             
             Button(action: {
                 triggerHaptic()
@@ -701,30 +709,112 @@ struct MeditationAppView: View {
     
     // MARK: - Logic & Actions
     
-    private func startBreathingAnimation() {
-        withAnimation(Animation.easeInOut(duration: 4.0).repeatForever(autoreverses: true)) {
-            breathingScale = 1.08
-            breathingOpacity = 0.3
-        }
+    private func formatIntervalLengthText(_ seconds: TimeInterval) -> String {
+        let totalRounded = Int(round(seconds))
+        let mins = totalRounded / 60
+        let secs = totalRounded % 60
+        return String(format: "%d:%02dm", mins, secs)
     }
-    
-    private func getCountIntervalLengthText() -> String {
-        let count = intervalInputMode == "count" ? intervalCount : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
-        let lengthSecs = totalTime / Double(max(1, count))
-        let mins = Int(lengthSecs) / 60
-        let secs = Int(round(lengthSecs.truncatingRemainder(dividingBy: 60)))
-        if mins > 0 && secs > 0 {
-            return "\(mins)m \(secs)s"
-        } else if mins > 0 {
-            return "\(mins)m"
-        } else {
-            return "\(secs)s"
+
+    private var effectiveIntervalCount: Int {
+        if intervalInputMode == "time" {
+            guard intervalX > 0 else { return 1 }
+            return max(1, Int(round(totalTime / intervalX)))
+        }
+        return max(1, intervalCount)
+    }
+
+    private var maxIntervalSectionCount: Int {
+        max(1, Int(totalTime / 5))
+    }
+
+    private func sectionCount(forTotal total: TimeInterval, fixedInterval: TimeInterval) -> Int {
+        guard fixedInterval > 0 else { return 1 }
+        return max(1, Int(round(total / fixedInterval)))
+    }
+
+    private var intermediateBellSpacing: TimeInterval {
+        if intervalInputMode == "time" {
+            return max(5, min(totalTime, intervalX))
+        }
+        return totalTime / Double(max(1, effectiveIntervalCount))
+    }
+
+    private var intermediateBellCount: Int {
+        if intervalInputMode == "time" {
+            guard intervalX > 0, intervalX < totalTime else { return 0 }
+            return max(0, Int(floor((totalTime - 0.001) / intervalX)))
+        }
+        return max(0, effectiveIntervalCount - 1)
+    }
+
+    private var hasIntermediateBells: Bool {
+        return intermediateBellCount > 0
+    }
+
+    private var intermediateBellSummaryText: String {
+        guard hasIntermediateBells else {
+            return "End bell only"
+        }
+
+        return "Bell every \(formatTime(intermediateBellSpacing))"
+    }
+
+    private var scheduledIntermediateBellSeconds: [Int] {
+        guard hasIntermediateBells else { return [] }
+
+        if intervalInputMode == "time" {
+            let spacing = max(1, Int(round(intervalX)))
+            let total = Int(round(totalTime))
+            return Array(stride(from: spacing, to: total, by: spacing))
+        }
+
+        let count = effectiveIntervalCount
+        guard count > 1 else { return [] }
+        return (1..<count).map { index in
+            Int(round(Double(index) * totalTime / Double(count)))
         }
     }
 
-    private var intervalSummaryText: String {
-        let count = intervalInputMode == "count" ? intervalCount : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
-        return "\(max(1, count))x every \(getCountIntervalLengthText())"
+    private var nextIntermediateBellRemaining: TimeInterval? {
+        let elapsed = max(0, totalTime - timeLeft)
+        for bellSecond in scheduledIntermediateBellSeconds {
+            let remaining = TimeInterval(bellSecond) - elapsed
+            if remaining > 0.5 {
+                return remaining
+            }
+        }
+        return nil
+    }
+
+    private var nextOvertimeBellRemaining: TimeInterval? {
+        guard hasIntermediateBells else { return nil }
+        let spacing = max(1, Int(round(intermediateBellSpacing)))
+        let elapsed = max(0, overtimeElapsed)
+        let nextBell = ceil((elapsed + 0.001) / Double(spacing)) * Double(spacing)
+        return max(0, nextBell - elapsed)
+    }
+
+    private var sessionBellStatusText: String? {
+        guard isSessionActive && !countdownActive && hasIntermediateBells else {
+            return nil
+        }
+
+        if overtimeActive {
+            guard let remaining = nextOvertimeBellRemaining else { return nil }
+            return "Next bell in \(formatBellCountdownText(remaining))"
+        }
+
+        guard let remaining = nextIntermediateBellRemaining else { return nil }
+        return "Next bell in \(formatBellCountdownText(remaining))"
+    }
+
+    private func formatBellCountdownText(_ seconds: TimeInterval) -> String {
+        let roundedMinutes = Int(ceil(max(0, seconds) / 60))
+        guard roundedMinutes > 0 else {
+            return "<1m"
+        }
+        return "\(roundedMinutes)m"
     }
     
     private func formatTime(_ seconds: TimeInterval) -> String {
@@ -735,6 +825,7 @@ struct MeditationAppView: View {
     }
     
     private func stopAllGongs() {
+        cancelPendingEndGongReplay()
         if let player = startPlayer, player.isPlaying {
             player.stop()
         }
@@ -752,19 +843,17 @@ struct MeditationAppView: View {
         sessionStartTime = nil
         accumulatedElapsed = 0
         lastProcessedSecond = 0
+        overtimeActive = false
+        overtimeStartTime = nil
+        overtimeAccumulated = 0
+        overtimeElapsed = 0
 
         if intervalInputMode == "count" {
-            intervalX = capped / Double(max(1, intervalCount))
+            intervalCount = min(max(1, intervalCount), maxIntervalSectionCount)
+            intervalX = capped / Double(intervalCount)
         } else {
-            if !isCustomInterval {
-                intervalX = round(capped / 2)
-                intervalCount = 2
-            } else if intervalX > capped {
-                intervalX = capped
-                intervalCount = 1
-            } else {
-                intervalCount = Int(round(capped / intervalX))
-            }
+            intervalX = max(5, intervalX)
+            intervalCount = sectionCount(forTotal: capped, fixedInterval: intervalX)
         }
 
         silentPlayer?.stop()
@@ -777,15 +866,19 @@ struct MeditationAppView: View {
         if !isRunning {
             hideKeyboard()
             showSettings = false
-            if timeLeft == totalTime && !countdownActive {
+            if overtimeActive {
+                overtimeStartTime = Date()
+            } else if timeLeft == totalTime && !countdownActive {
                 if isCountdownEnabled {
                     countdownActive = true
                     countdownTimeLeft = countdownDuration
                 } else {
                     playGong()
                 }
+                sessionStartTime = Date()
+            } else {
+                sessionStartTime = Date()
             }
-            sessionStartTime = Date()
             isRunning = true
             
             // Loop silent player on repeat to keep background audio thread alive
@@ -798,10 +891,14 @@ struct MeditationAppView: View {
             }
             bgTimer.start()
         } else {
-            if let start = sessionStartTime {
+            if overtimeActive, let start = overtimeStartTime {
+                overtimeAccumulated += Date().timeIntervalSince(start)
+                overtimeElapsed = overtimeAccumulated
+            } else if let start = sessionStartTime {
                 accumulatedElapsed += Date().timeIntervalSince(start)
             }
             sessionStartTime = nil
+            overtimeStartTime = nil
             isRunning = false
             stopAllGongs()
             
@@ -818,8 +915,12 @@ struct MeditationAppView: View {
         isRunning = false
         countdownActive = false
         sessionStartTime = nil
+        overtimeStartTime = nil
         accumulatedElapsed = 0
         lastProcessedSecond = 0
+        overtimeActive = false
+        overtimeAccumulated = 0
+        overtimeElapsed = 0
         timeLeft = totalTime
         stopAllGongs()
         
@@ -842,6 +943,15 @@ struct MeditationAppView: View {
                 countdownTimeLeft -= 1
             }
         } else {
+            if overtimeActive {
+                if let start = overtimeStartTime {
+                    overtimeElapsed = overtimeAccumulated + Date().timeIntervalSince(start)
+                }
+                playOvertimeIntermediateBellIfNeeded(currentSecond: Int(overtimeElapsed))
+                timeLeft = 0
+                return
+            }
+
             guard let start = sessionStartTime else { return }
             let totalElapsed = accumulatedElapsed + Date().timeIntervalSince(start)
             let newTimeLeft = max(0, totalTime - totalElapsed)
@@ -849,26 +959,9 @@ struct MeditationAppView: View {
             
             let currentSecond = Int(totalElapsed)
             if currentSecond > lastProcessedSecond {
+                let scheduledBells = Set(scheduledIntermediateBellSeconds)
                 for sec in (lastProcessedSecond + 1)...currentSecond {
-                    var shouldPlay = false
-                    if sec > 0 && Double(sec) < totalTime {
-                        if intervalInputMode == "time" {
-                            shouldPlay = sec % Int(round(intervalX)) == 0
-                        } else {
-                            let count = intervalInputMode == "count" ? intervalCount : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
-                            if count > 1 {
-                                for i in 1..<count {
-                                    let expectedSecond = Int(round(Double(i) * totalTime / Double(count)))
-                                    if sec == expectedSecond {
-                                        shouldPlay = true
-                                        break
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    
-                    if shouldPlay {
+                    if scheduledBells.contains(sec) {
                         playIntervalGong()
                     }
                 }
@@ -877,12 +970,42 @@ struct MeditationAppView: View {
             
             if newTimeLeft <= 0 {
                 playEndGong()
-                isRunning = false
+                overtimeActive = true
+                overtimeStartTime = Date()
+                overtimeAccumulated = 0
+                overtimeElapsed = 0
+                timeLeft = 0
                 sessionStartTime = nil
-                silentPlayer?.stop()
-                bgTimer.stop()
+                accumulatedElapsed = 0
+                lastProcessedSecond = 0
             }
         }
+    }
+
+    private func playOvertimeIntermediateBellIfNeeded(currentSecond: Int) {
+        guard hasIntermediateBells, currentSecond > lastProcessedSecond else { return }
+
+        let spacing = max(1, Int(round(intermediateBellSpacing)))
+        for sec in (lastProcessedSecond + 1)...currentSecond {
+            if sec > 0 && sec % spacing == 0 {
+                playIntervalGong()
+            }
+        }
+        lastProcessedSecond = currentSecond
+    }
+
+    private func cancelPendingEndGongReplay() {
+        endGongReplayWorkItem?.cancel()
+        endGongReplayWorkItem = nil
+    }
+
+    private func endGongReplayDelay() -> TimeInterval {
+        guard let player = startPlayer else {
+            return 4.0
+        }
+
+        let rate = max(0.1, Double(player.rate))
+        return max(1.5, player.duration / rate + 0.25)
     }
     
     // Direct inputs committing
@@ -898,17 +1021,11 @@ struct MeditationAppView: View {
                 isRunning = false
                 
                 if intervalInputMode == "count" {
-                    intervalX = capped / Double(max(1, intervalCount))
+                    intervalCount = min(max(1, intervalCount), maxIntervalSectionCount)
+                    intervalX = capped / Double(intervalCount)
                 } else {
-                    if !isCustomInterval {
-                        intervalX = round(capped / 2)
-                        intervalCount = 2
-                    } else if intervalX > capped {
-                        intervalX = capped
-                        intervalCount = 1
-                    } else {
-                        intervalCount = Int(round(capped / intervalX))
-                    }
+                    intervalX = max(5, intervalX)
+                    intervalCount = sectionCount(forTotal: capped, fixedInterval: intervalX)
                 }
             }
             syncAllInputs()
@@ -927,7 +1044,7 @@ struct MeditationAppView: View {
             syncAllInputs()
             
         case "intervalCount":
-            let count = Int(intervalCountInput) ?? 2
+            let count = min(max(1, Int(intervalCountInput) ?? 2), maxIntervalSectionCount)
             if count >= 1 {
                 let calculated = totalTime / Double(count)
                 intervalX = max(5, min(totalTime, calculated))
@@ -967,7 +1084,7 @@ struct MeditationAppView: View {
             commitField("intervalSecs")
         case "intervalCount":
             let current = intervalCount
-            intervalCountInput = String(max(1, current + (up ? 1 : -1)))
+            intervalCountInput = String(min(maxIntervalSectionCount, max(1, current + (up ? 1 : -1))))
             commitField("intervalCount")
         case "countdown":
             let current = Int(countdownDurationInput) ?? Int(defaultCountdownDuration)
@@ -980,15 +1097,14 @@ struct MeditationAppView: View {
     
     private func handleIntervalModeChange() {
         if intervalInputMode == "time" {
-            let rounded = round(intervalX)
+            let rounded = max(5, round(intervalX))
             intervalX = rounded
-            intervalCount = Int(round(totalTime / rounded))
-            if rounded == round(totalTime / 2) {
-                isCustomInterval = false
-            }
+            intervalCount = sectionCount(forTotal: totalTime, fixedInterval: rounded)
+            isCustomInterval = true
         } else {
-            let count = intervalCount
+            let count = min(max(1, intervalCount), maxIntervalSectionCount)
             if count >= 1 {
+                intervalCount = count
                 let calculated = totalTime / Double(count)
                 intervalX = calculated
                 if count == 2 || round(calculated) == round(totalTime / 2) {
@@ -1003,7 +1119,6 @@ struct MeditationAppView: View {
         // sync total time inputs
         let tm = Int(totalTime) / 60
         totalMinsInput = String(tm)
-        totalSecsInput = "00"
         
         // sync interval time inputs
         let im = Int(intervalX) / 60
@@ -1012,7 +1127,7 @@ struct MeditationAppView: View {
         intervalSecsInput = String(format: "%02d", isSec)
         
         // sync count input
-        let count = intervalInputMode == "count" ? intervalCount : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
+        let count = intervalInputMode == "count" ? min(intervalCount, maxIntervalSectionCount) : (intervalX > 0 ? Int(round(totalTime / intervalX)) : 2)
         intervalCountInput = String(count)
         
         // sync countdown
@@ -1084,10 +1199,14 @@ struct MeditationAppView: View {
     }
     
     private func playEndGong() {
+        cancelPendingEndGongReplay()
         playGong()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        let replay = DispatchWorkItem {
             self.playGong()
+            self.endGongReplayWorkItem = nil
         }
+        endGongReplayWorkItem = replay
+        DispatchQueue.main.asyncAfter(deadline: .now() + endGongReplayDelay(), execute: replay)
     }
     
     private func triggerHaptic() {
@@ -1095,6 +1214,13 @@ struct MeditationAppView: View {
         generator.impactOccurred()
     }
     
+    private func dismissSettings() {
+        withAnimation(.easeInOut(duration: 0.3)) {
+            hideKeyboard()
+            showSettings = false
+        }
+    }
+
     private func hideKeyboard() {
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
     }
@@ -1128,7 +1254,7 @@ struct CustomSegmentedPicker: View {
                 }) {
                     Text(option.0)
                         .font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundColor(selection == option.1 ? Color(red: 62.0 / 255.0, green: 39.0 / 255.0, blue: 37.0 / 255.0) : Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0))
+                        .foregroundColor(selection == option.1 ? Color(red: 44.0 / 255.0, green: 37.0 / 255.0, blue: 22.0 / 255.0) : Color(red: 176.0 / 255.0, green: 137.0 / 255.0, blue: 62.0 / 255.0))
                         .padding(.vertical, 5)
                         .padding(.horizontal, 10)
                         .frame(minWidth: 62)
@@ -1139,8 +1265,8 @@ struct CustomSegmentedPicker: View {
                                         .fill(
                                             LinearGradient(
                                                 gradient: Gradient(colors: [
-                                                    Color(red: 255.0 / 255.0, green: 215.0 / 255.0, blue: 0),
-                                                    Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0)
+                                                    Color(red: 224.0 / 255.0, green: 174.0 / 255.0, blue: 64.0 / 255.0),
+                                                    Color(red: 197.0 / 255.0, green: 145.0 / 255.0, blue: 43.0 / 255.0)
                                                 ]),
                                                 startPoint: .topLeading,
                                                 endPoint: .bottomTrailing
