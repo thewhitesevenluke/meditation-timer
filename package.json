@@ -8,14 +8,10 @@
     "build": "vite build --config web/vite.config.js",
     "lint": "eslint -c web/eslint.config.js web",
     "preview": "vite preview --config web/vite.config.js",
-    "ios:init": "npm run build && npx cap add ios",
-    "ios:sync": "npm run build && npx cap sync ios",
-    "ios:open": "npx cap open ios"
+    "ios:install": "node scripts/install-ios.mjs",
+    "ios:open": "open ios/App/App.xcodeproj"
   },
   "dependencies": {
-    "@capacitor/cli": "^8.3.4",
-    "@capacitor/core": "^8.3.4",
-    "@capacitor/ios": "^8.3.4",
     "react": "^19.2.6",
     "react-dom": "^19.2.6"
   },
