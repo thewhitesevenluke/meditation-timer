@@ -513,26 +513,10 @@ struct MeditationAppView: View {
                 .frame(width: 36, height: 5)
                 .padding(.top, 10)
             
-            // Title & Native Close Button
-            HStack {
-                Text("More Settings")
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundColor(dhammaAntiqueGold)
-                
-                Spacer()
-                
-                Button(action: {
-                    triggerHaptic()
-                    dismissSettings()
-                }) {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(dhammaAntiqueGold)
-                        .frame(width: 28, height: 28)
-                        .background(dhammaGold.opacity(0.14))
-                        .clipShape(Circle())
-                }
-            }
+            Text("More Settings")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundColor(dhammaAntiqueGold)
+                .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, 24)
             
             VStack(spacing: 20) {
