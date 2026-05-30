@@ -12,7 +12,7 @@ Golden Meditation is an iOS-first meditation timer. The production iPhone app is
 ```sh
 npm install
 npm run build
-npm run ios:sync
+npm run ios:install
 npm run ios:open
 ```
 
