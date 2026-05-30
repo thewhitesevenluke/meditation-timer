@@ -120,37 +120,14 @@ struct MeditationAppView: View {
     
     var body: some View {
         ZStack {
-            // 1. Immersive Buddha Background (native layered crop for iPhone portrait)
+            // 1. Immersive Buddha Background
             GeometryReader { geometry in
-                ZStack {
-                    buddhaImageView
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .offset(x: -geometry.size.height * 0.44)
-                        .clipped()
-
-                    buddhaImageView
-                        .resizable()
-                        .aspectRatio(contentMode: .fill)
-                        .frame(width: geometry.size.width, height: geometry.size.height)
-                        .offset(x: -geometry.size.height * 0.34)
-                        .scaleEffect(0.78)
-                        .opacity(0.96)
-                        .mask(
-                            LinearGradient(
-                                gradient: Gradient(stops: [
-                                    .init(color: .clear, location: 0.00),
-                                    .init(color: .black, location: 0.12),
-                                    .init(color: .black, location: 0.88),
-                                    .init(color: .clear, location: 1.00)
-                                ]),
-                                startPoint: .top,
-                                endPoint: .bottom
-                            )
-                        )
-                }
+                buddhaImageView
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
+                    .offset(x: -geometry.size.height * 0.34)
+                    .clipped()
             }
             .edgesIgnoringSafeArea(.all)
             
@@ -219,22 +196,10 @@ struct MeditationAppView: View {
     
     private var timerCircleView: some View {
         ZStack {
-            // Breathing Outer Ring
-            Circle()
-                .stroke(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.5), lineWidth: 2)
-                .frame(width: 260, height: 260)
-                .scaleEffect(isRunning ? breathingScale : 0.95)
-                .opacity(isRunning ? breathingOpacity : 0)
-                .animation(isRunning ? Animation.easeInOut(duration: 4.0).repeatForever(autoreverses: true) : .default, value: isRunning)
-            
             // Solid Inner Timer Card
             Circle()
                 .fill(Color(red: 255.0 / 255.0, green: 250.0 / 255.0, blue: 240.0 / 255.0).opacity(0.4))
                 .frame(width: 240, height: 240)
-                .overlay(
-                    Circle()
-                        .stroke(Color(red: 212.0 / 255.0, green: 175.0 / 255.0, blue: 55.0 / 255.0).opacity(0.5), lineWidth: 2)
-                )
                 .shadow(color: Color(red: 139.0 / 255.0, green: 115.0 / 255.0, blue: 85.0 / 255.0).opacity(0.1), radius: 24, x: 0, y: 8)
             
             // Timer details
