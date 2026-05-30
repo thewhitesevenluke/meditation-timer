@@ -1,6 +1,6 @@
 {
   "appId": "com.lukex.goldenmeditation",
   "appName": "Golden Meditation",
-  "webDir": "dist",
+  "webDir": "web/dist",
   "bundledWebRuntime": false
 }
