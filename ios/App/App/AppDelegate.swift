@@ -122,11 +122,10 @@ struct MeditationAppView: View {
         ZStack {
             // 1. Immersive Buddha Background
             GeometryReader { geometry in
-                buddhaImageView
+                homeBackgroundImageView
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: geometry.size.width, height: geometry.size.height)
-                    .offset(x: -geometry.size.height * 0.34)
                     .clipped()
             }
             .edgesIgnoringSafeArea(.all)
@@ -185,6 +184,14 @@ struct MeditationAppView: View {
     }
     
     // MARK: - Subviews
+    
+    private var homeBackgroundImageView: Image {
+        if let path = Bundle.main.path(forResource: "buddha-ios-home", ofType: "jpg", inDirectory: "public"),
+           let uiImage = UIImage(contentsOfFile: path) {
+            return Image(uiImage: uiImage)
+        }
+        return buddhaImageView
+    }
     
     private var buddhaImageView: Image {
         if let path = Bundle.main.path(forResource: "buddha", ofType: "jpg", inDirectory: "public"),
